@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Utility Hub - Index</title>
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <script src="assets/tailwindcss.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg: "#0d0d0d",
+              "border-low": "#1a1614",
+              "border-med": "#2d2621",
+              "text-main": "#f4f4f4",
+              "text-muted": "#6b5c54",
+              "sunset-glow": "#ff8c42",
+              "sunset-dim": "#4a3728",
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      [v-cloak] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen font-sans bg-bg text-text-main m-0 antialiased">
+    <header
+      class="border-b border-border-low p-5 bg-gradient-to-r from-[#0d0d0d] to-[#1a1614]"
+    >
+      <div class="flex items-center gap-3">
+        <div class="w-2 h-2 bg-sunset-glow"></div>
+        <h1 class="text-lg font-medium tracking-tighter opacity-90 uppercase">
+          Utility Hub
+        </h1>
+      </div>
+    </header>
+
+    <main
+      class="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] border-b border-border-low"
+    >
+      <!-- Calculator Link -->
+      <a
+        href="feetinchescalc.html"
+        class="block border-r border-b border-border-low p-10 md:p-12 transition-all duration-300 hover:bg-[rgba(255,140,66,0.03)] group text-left no-underline"
+      >
+        <div
+          class="text-[0.7rem] text-text-muted uppercase tracking-[0.15em] mb-4 group-hover:text-sunset-glow transition-colors"
+        >
+          Calculation Tools
+        </div>
+        <div
+          class="text-2xl font-normal text-text-main mb-2 transition-colors group-hover:text-sunset-glow"
+        >
+          Feet/Inches Calc
+        </div>
+        <div class="text-[0.9rem] text-text-muted italic opacity-70">
+          Add and subtract feet, inches, and fractions
+        </div>
+      </a>
+
+      <!-- Text Tools Link -->
+      <a
+        href="texttools.html"
+        class="block border-r border-b border-border-low p-10 md:p-12 transition-all duration-300 hover:bg-[rgba(255,140,66,0.03)] group text-left no-underline"
+      >
+        <div
+          class="text-[0.7rem] text-text-muted uppercase tracking-[0.15em] mb-4 group-hover:text-sunset-glow transition-colors"
+        >
+          Text Utilities
+        </div>
+        <div
+          class="text-2xl font-normal text-text-main mb-2 transition-colors group-hover:text-sunset-glow"
+        >
+          Roman & Spec Parser
+        </div>
+        <div class="text-[0.9rem] text-text-muted italic opacity-70">
+          Parse Roman numerals and refactor spec text
+        </div>
+      </a>
+
+      <!-- Duct Calculator Link -->
+      <a
+        href="ductcalculator.html"
+        class="block border-r border-b border-border-low p-10 md:p-12 transition-all duration-300 hover:bg-[rgba(255,140,66,0.03)] group text-left no-underline"
+      >
+        <div
+          class="text-[0.7rem] text-text-muted uppercase tracking-[0.15em] mb-4 group-hover:text-sunset-glow transition-colors"
+        >
+          HVAC Tools
+        </div>
+        <div
+          class="text-2xl font-normal text-text-main mb-2 transition-colors group-hover:text-sunset-glow"
+        >
+          Duct Size Calculator
+        </div>
+        <div class="text-[0.9rem] text-text-muted italic opacity-70">
+          Calculate rectangular duct dimensions from CFM and pressure drop
+        </div>
+      </a>
+
+      <!-- AirFlow Designer Link -->
+      <a
+        href="ariflow.html"
+        class="block border-r border-b border-border-low p-10 md:p-12 transition-all duration-300 hover:bg-[rgba(255,140,66,0.03)] group text-left no-underline"
+      >
+        <div
+          class="text-[0.7rem] text-text-muted uppercase tracking-[0.15em] mb-4 group-hover:text-sunset-glow transition-colors"
+        >
+          HVAC Tools
+        </div>
+        <div
+          class="text-2xl font-normal text-text-main mb-2 transition-colors group-hover:text-sunset-glow"
+        >
+          AirFlow Designer
+        </div>
+        <div class="text-[0.9rem] text-text-muted italic opacity-70">
+          Design duct layouts and calculate airflow distribution
+        </div>
+      </a>
+
+      <!-- Empty Slot -->
+      <a
+        href="#"
+        class="block border-r border-b border-border-low p-10 md:p-12 opacity-20 pointer-events-none text-left no-underline"
+      >
+        <div
+          class="text-[0.7rem] text-text-muted uppercase tracking-[0.15em] mb-4"
+        >
+          --
+        </div>
+        <div class="text-2xl font-normal text-text-main mb-2">Empty Slot</div>
+      </a>
+    </main>
+  </body>
+</html>

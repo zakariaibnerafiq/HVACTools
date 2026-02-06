@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spec Refactor - Utility Hub</title>
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <script src="assets/tailwindcss.js"></script>
+    <script src="assets/vue.global.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg: "#0d0d0d",
+              "border-low": "#1a1614",
+              "border-med": "#2d2621",
+              "text-main": "#f4f4f4",
+              "text-muted": "#6b5c54",
+              "sunset-glow": "#ff8c42",
+              "sunset-dim": "#4a3728",
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      [v-cloak] {
+        display: none;
+      }
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      /* Custom scrollbar to match app feel */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0d0d0d;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2d2621;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #4a3728;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-bg text-text-main min-h-screen flex flex-col font-sans selection:bg-sunset-glow selection:text-white overflow-hidden"
+  >
+    <div id="app" v-cloak class="flex flex-col h-screen">
+      <!-- Header -->
+      <header
+        class="border-b border-border-low p-4 px-6 bg-gradient-to-r from-[#0d0d0d] to-[#1a1614] flex justify-between items-center shrink-0"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-2 h-2 bg-sunset-glow"></div>
+          <h1 class="text-lg font-medium tracking-tighter opacity-90 uppercase">
+            Spec Refactor
+          </h1>
+        </div>
+        <a
+          href="index.html"
+          class="text-text-muted hover:text-sunset-glow transition-colors text-sm uppercase tracking-wider flex items-center gap-2"
+        >
+          <span>&larr;</span> Home
+        </a>
+      </header>
+
+      <!-- Main Content (Twin Pane Layout) -->
+      <main class="flex-1 flex overflow-hidden">
+        <!-- Input Pane -->
+        <section class="w-1/2 flex flex-col border-r border-border-low">
+          <div
+            class="h-12 px-4 border-b border-border-low flex justify-between items-center bg-[#0d0d0d] shrink-0"
+          >
+            <span class="text-[10px] text-text-muted uppercase tracking-widest"
+              >Input Source</span
+            >
+            <button
+              @click="inputContent = ''"
+              class="text-[10px] text-text-muted hover:text-red-400 uppercase tracking-wider transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+          <textarea
+            v-model="inputContent"
+            placeholder="Paste your text here..."
+            class="flex-1 w-full bg-[#12100e] text-text-main p-6 font-mono text-sm outline-none resize-none focus:bg-[#151210] transition-colors placeholder:text-text-muted/30"
+          ></textarea>
+        </section>
+
+        <!-- Output Pane -->
+        <section class="w-1/2 flex flex-col bg-[#110e0c]">
+          <!-- Header -->
+          <div
+            class="h-12 px-4 border-b border-border-low flex justify-between items-center shrink-0 bg-[#0d0d0d]"
+          >
+            <span class="text-[10px] text-text-muted uppercase tracking-widest"
+              >Processed Output</span
+            >
+
+            <button
+              @click="copyAll"
+              class="text-[10px] text-sunset-glow hover:text-white uppercase tracking-wider transition-colors flex items-center gap-1"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path
+                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                ></path>
+              </svg>
+              Copy All
+            </button>
+          </div>
+
+          <!-- Controls Toolbar -->
+          <div
+            class="border-b border-border-low bg-[#12100e] p-3 flex flex-col gap-3"
+          >
+            <!-- Row 1: Case & Labels -->
+            <div class="flex items-center gap-4">
+              <select
+                v-model="specCase"
+                class="bg-[#1a1614] text-text-muted text-[10px] uppercase border-none outline-none py-1 px-2 rounded-sm cursor-pointer hover:text-text-main"
+              >
+                <option value="default">Default Case</option>
+                <option value="uppercase">ALL CAPS</option>
+                <option value="lowercase">all small</option>
+                <option value="capitalize">Capitalize Words</option>
+              </select>
+              <label class="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  v-model="specShowLabels"
+                  class="hidden"
+                />
+                <div
+                  class="w-2 h-2 rounded-full transition-colors"
+                  :class="specShowLabels ? 'bg-sunset-glow' : 'bg-text-muted/30'"
+                ></div>
+                <span
+                  class="text-[10px] uppercase tracking-wider text-text-muted group-hover:text-text-main transition-colors"
+                  >Labels</span
+                >
+              </label>
+            </div>
+
+            <!-- Row 2: Rule Builder -->
+            <div class="flex flex-col gap-2 pt-2 border-t border-border-med/30">
+              <span
+                class="text-[10px] text-text-muted uppercase tracking-widest opacity-60"
+                >Split Rules</span
+              >
+              <div class="flex flex-wrap gap-2">
+                <!-- Presets -->
+                <label
+                  v-for="rule in splitRules.filter(r => !r.isCustom)"
+                  :key="rule.id"
+                  class="flex items-center gap-1.5 cursor-pointer hover:bg-[#1a1614] pr-2 rounded transition-colors select-none"
+                >
+                  <input
+                    type="checkbox"
+                    v-model="rule.enabled"
+                    class="accent-sunset-glow w-3 h-3 bg-transparent border-border-med"
+                  />
+                  <span class="text-[10px] text-[#f4f4f5] font-mono"
+                    >{{ rule.name }}</span
+                  >
+                </label>
+              </div>
+              <!-- Custom Input -->
+              <div class="flex items-center gap-2 mt-1">
+                <div class="text-[10px] font-mono text-sunset-glow">
+                  Custom:
+                </div>
+                <input
+                  type="text"
+                  v-model="newCustomRule"
+                  placeholder="Regex (e.g. ^\d+\.)"
+                  class="bg-[#1a1614] border border-border-med/50 text-text-main text-[10px] px-2 py-0.5 font-mono outline-none focus:border-sunset-glow w-full max-w-[200px]"
+                  @keydown.enter="addCustomRule"
+                />
+                <button
+                  @click="addCustomRule"
+                  class="text-[10px] uppercase text-text-muted hover:text-sunset-glow"
+                >
+                  +
+                </button>
+              </div>
+              <!-- Active Custom Rules List -->
+              <div
+                v-if="splitRules.some(r => r.isCustom)"
+                class="flex flex-wrap gap-2 mt-1"
+              >
+                <div
+                  v-for="(rule, idx) in splitRules.filter(r => r.isCustom)"
+                  :key="rule.id"
+                  class="flex items-center gap-1 bg-[#1a1614] px-1.5 rounded border border-border-med/50"
+                >
+                  <span class="text-[10px] text-sunset-glow font-mono"
+                    >{{ rule.name }}</span
+                  >
+                  <button
+                    @click="removeRule(rule.id)"
+                    class="text-[10px] text-text-muted hover:text-red-400"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Result List -->
+          <div class="flex-1 overflow-y-auto p-6 space-y-3">
+            <div
+              v-for="(block, idx) in processedBlocks"
+              :key="idx"
+              class="group relative bg-[#0d0d0d] border border-border-med p-4 hover:border-sunset-dim transition-all"
+              :class="{ 'ml-8 border-l-2 border-l-sunset-glow': block.type === 'sub' }"
+            >
+              <div class="flex gap-4">
+                <!-- Label Column -->
+                <div
+                  v-if="block.label && !specShowLabels"
+                  class="text-sunset-glow font-bold text-sm min-w-[30px] pt-[2px]"
+                >
+                  {{ block.label }}
+                </div>
+
+                <!-- Text Column -->
+                <div
+                  class="flex-1 text-sm leading-relaxed text-[#f4f4f5] whitespace-pre-wrap pr-8"
+                >
+                  {{ formatBlockText(block) }}
+                </div>
+
+                <!-- Copy Item Button -->
+                <button
+                  @click="copyText(formatBlockText(block), $event)"
+                  class="absolute top-3 right-3 text-border-med hover:text-sunset-glow transition-colors bg-[#0d0d0d] p-1 rounded"
+                  title="Copy this block"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect
+                      x="9"
+                      y="9"
+                      width="13"
+                      height="13"
+                      rx="2"
+                      ry="2"
+                    ></rect>
+                    <path
+                      d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div
+              v-if="processedBlocks.length === 0"
+              class="h-full flex items-center justify-center opacity-20"
+            >
+              <div class="text-center">
+                <div class="text-4xl mb-4 text-text-muted">✎</div>
+                <div class="text-sm uppercase tracking-widest">
+                  Waiting for input
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const { createApp, ref, computed } = Vue;
+
+      createApp({
+        setup() {
+          const inputContent = ref("");
+
+          // Spec Refactor Options
+          const specCase = ref("default");
+          const specShowLabels = ref(true);
+          const newCustomRule = ref("");
+
+          const splitRules = ref([
+            // Numbers
+            {
+              id: 1,
+              name: "1.",
+              pattern: "^\\d+\\.",
+              enabled: true,
+              isCustom: false,
+            },
+            {
+              id: 2,
+              name: "1)",
+              pattern: "^\\d+\\)",
+              enabled: false,
+              isCustom: false,
+            },
+            {
+              id: 3,
+              name: "(1)",
+              pattern: "^\\(\\d+\\)",
+              enabled: false,
+              isCustom: false,
+            },
+            // Letters
+            {
+              id: 4,
+              name: "a.",
+              pattern: "^[a-z]\\.",
+              enabled: true,
+              isCustom: false,
+            },
+            {
+              id: 5,
+              name: "a)",
+              pattern: "^[a-z]\\)",
+              enabled: false,
+              isCustom: false,
+            },
+            {
+              id: 6,
+              name: "(a)",
+              pattern: "^\\([a-z]\\)",
+              enabled: false,
+              isCustom: false,
+            },
+            // Roman
+            {
+              id: 7,
+              name: "i.",
+              pattern: "^[ivxl]+\\.",
+              enabled: true,
+              isCustom: false,
+            },
+            {
+              id: 8,
+              name: "i)",
+              pattern: "^[ivxl]+\\)",
+              enabled: false,
+              isCustom: false,
+            },
+            {
+              id: 9,
+              name: "(i)",
+              pattern: "^\\([ivxl]+\\)",
+              enabled: false,
+              isCustom: false,
+            },
+          ]);
+
+          const addCustomRule = () => {
+            if (!newCustomRule.value) return;
+            splitRules.value.push({
+              id: Date.now(),
+              name: newCustomRule.value,
+              pattern: newCustomRule.value,
+              enabled: true,
+              isCustom: true,
+            });
+            newCustomRule.value = "";
+          };
+
+          const removeRule = (id) => {
+            const idx = splitRules.value.findIndex((r) => r.id === id);
+            if (idx !== -1) splitRules.value.splice(idx, 1);
+          };
+
+          // --- Shared Helper: Copy ---
+          const copyText = async (text, event) => {
+            try {
+              await navigator.clipboard.writeText(text);
+              if (event) {
+                const btn = event.currentTarget;
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                setTimeout(() => (btn.innerHTML = originalHTML), 1000);
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          };
+
+          const copyAll = async () => {
+            if (processedBlocks.value.length === 0) return;
+            const allText = processedBlocks.value
+              .map(formatBlockText)
+              .join("\n\n");
+            await copyText(allText, null);
+          };
+
+          // --- Formatting Helper ---
+          const formatBlockText = (block) => {
+            let text = block.content || block.text;
+
+            if (specShowLabels.value && block.label) {
+              text = `${block.label} ${text}`;
+            }
+
+            // Case handling
+            if (specCase.value === "uppercase") text = text.toUpperCase();
+            else if (specCase.value === "lowercase") text = text.toLowerCase();
+            else if (specCase.value === "capitalize")
+              text = text.replace(/\b\w/g, (l) => l.toUpperCase());
+            return text;
+          };
+
+          // --- Logic: Spec Refactor ---
+          const parseSpecBlocks = (text) => {
+            if (!text) return [];
+            const lines = text.split(/\r?\n/);
+            const blocks = [];
+            let currentText = "";
+            let currentLabel = "";
+            let currentType = "para";
+
+            const patterns = {
+              number: /^\d+\./, // Default para check
+            };
+
+            // Build Dynamic Regex
+            const enabledPatterns = splitRules.value
+              .filter((r) => r.enabled)
+              .map((r) => r.pattern);
+            if (enabledPatterns.length === 0)
+              return [{ label: "", content: text.trim(), type: "para" }];
+
+            const groupPattern = "(" + enabledPatterns.join("|") + ")";
+            const regexStr = "(\\n|^)" + groupPattern + "\\s+";
+            const dynamicRegex = new RegExp(regexStr, "i");
+
+            lines.forEach((line) => {
+              const trimmed = line.trim();
+              if (!trimmed) return;
+              const match = trimmed.match(dynamicRegex);
+
+              if (match) {
+                const foundLabel = match[2];
+
+                if (currentText)
+                  blocks.push({
+                    label: currentLabel,
+                    content: currentText.trim(),
+                    type: currentType,
+                  });
+
+                currentLabel = foundLabel;
+                currentText = trimmed.replace(dynamicRegex, "").trim() + " ";
+                currentType = /^\d/.test(currentLabel) ? "para" : "sub";
+              } else {
+                currentText += trimmed + " ";
+              }
+            });
+
+            if (currentText)
+              blocks.push({
+                label: currentLabel,
+                content: currentText.trim(),
+                type: currentType,
+              });
+            return blocks;
+          };
+
+          // --- Computed Results ---
+          const processedBlocks = computed(() => {
+            if (!inputContent.value) return [];
+            return parseSpecBlocks(inputContent.value);
+          });
+
+          return {
+            inputContent,
+            processedBlocks,
+            specCase,
+            specShowLabels,
+            splitRules,
+            newCustomRule,
+            addCustomRule,
+            removeRule,
+            copyText,
+            copyAll,
+            formatBlockText,
+          };
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>

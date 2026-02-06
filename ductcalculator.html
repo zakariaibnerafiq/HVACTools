@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Duct Size Calculator - Utility Hub</title>
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <script src="assets/tailwindcss.js"></script>
+    <script src="assets/vue.global.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg: "#0d0d0d",
+              "border-low": "#1a1614",
+              "border-med": "#2d2621",
+              "text-main": "#f4f4f4",
+              "text-muted": "#6b5c54",
+              "sunset-glow": "#ff8c42",
+              "sunset-dim": "#4a3728",
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      [v-cloak] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen font-sans bg-bg text-text-main m-0 antialiased selection:bg-sunset-glow selection:text-white"
+  >
+    <div id="app" v-cloak>
+      <header
+        class="border-b border-border-low p-5 bg-gradient-to-r from-[#0d0d0d] to-[#1a1614] flex justify-between items-center"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-2 h-2 bg-sunset-glow"></div>
+          <h1 class="text-lg font-medium tracking-tighter opacity-90 uppercase">
+            Duct Size Calculator
+          </h1>
+        </div>
+        <a
+          href="index.html"
+          class="text-text-muted hover:text-sunset-glow transition-colors text-sm uppercase tracking-wider flex items-center gap-2"
+        >
+          <span>&larr;</span> Back to Home
+        </a>
+      </header>
+
+      <main>
+        <div
+          class="grid grid-cols-1 md:grid-cols-[240px_1fr] border-b border-border-low group"
+        >
+          <div
+            class="border-b border-border-low md:border-b-0 md:border-r md:border-border-low p-10 uppercase tracking-[0.15em] text-[0.7rem] text-sunset-glow transition-colors duration-300"
+          >
+            Duct Size Calculator<br />
+            <span class="opacity-40 font-normal mt-2 block lowercase italic"
+              >ρ: 0.075 | μ: 0.0432 | Cp: 0.24 | EF: 1.08</span
+            >
+          </div>
+
+          <div class="p-8 md:p-12">
+            <div class="max-w-[500px]">
+              <div class="space-y-4 mb-8">
+                <div class="flex items-center justify-between">
+                  <label
+                    class="text-[10px] text-text-muted uppercase tracking-widest"
+                    >Flow Rate (CFM)</label
+                  >
+                  <input
+                    type="number"
+                    v-model.number="cfm"
+                    class="font-mono w-32 appearance-none bg-[#12100e] border border-border-med p-3 text-text-main outline-none transition-all duration-300 text-[0.95rem] hover:border-sunset-dim focus:border-sunset-glow focus:bg-[#181412] focus:shadow-[0_0_15px_rgba(255,140,66,0.1)] text-right"
+                  />
+                </div>
+                <div class="flex items-center justify-between">
+                  <label
+                    class="text-[10px] text-text-muted uppercase tracking-widest"
+                    >Head Loss (in.WC/100ft)</label
+                  >
+                  <input
+                    type="number"
+                    v-model.number="headLoss"
+                    step="0.01"
+                    class="font-mono w-32 appearance-none bg-[#12100e] border border-border-med p-3 text-text-main outline-none transition-all duration-300 text-[0.95rem] hover:border-sunset-dim focus:border-sunset-glow focus:bg-[#181412] focus:shadow-[0_0_15px_rgba(255,140,66,0.1)] text-right"
+                  />
+                </div>
+                <div class="flex items-center justify-between">
+                  <label
+                    class="text-[10px] text-text-muted uppercase tracking-widest"
+                    >Duct Width (in)</label
+                  >
+                  <input
+                    type="number"
+                    v-model.number="width"
+                    class="font-mono w-32 appearance-none bg-[#12100e] border border-border-med p-3 text-text-main outline-none transition-all duration-300 text-[0.95rem] hover:border-sunset-dim focus:border-sunset-glow focus:bg-[#181412] focus:shadow-[0_0_15px_rgba(255,140,66,0.1)] text-right"
+                  />
+                </div>
+                <div class="flex items-center justify-between">
+                  <label
+                    class="text-[10px] text-text-muted uppercase tracking-widest"
+                    >Calculated Height (in)</label
+                  >
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="number"
+                      :value="results ? results.height : ''"
+                      readonly
+                      class="font-mono w-32 bg-[#1a1614] border border-border-low p-3 text-sunset-glow outline-none text-[0.95rem] text-right cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+                <div class="flex items-center justify-between" v-if="results">
+                  <label
+                    class="text-[10px] text-text-muted uppercase tracking-widest"
+                    >Original Height (Raw)</label
+                  >
+                  <div
+                    class="font-mono text-[0.95rem] text-text-muted opacity-80 pr-1"
+                  >
+                    {{ results.originalHeight }}
+                    <span class="text-[9px] opacity-60">in</span>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between" v-if="results">
+                  <label
+                    class="text-[10px] text-text-muted uppercase tracking-widest"
+                    >Actual Head Loss</label
+                  >
+                  <div class="font-mono text-[0.95rem] text-sunset-glow pr-1">
+                    {{ results.actualHeadLoss }}
+                    <span class="text-[9px] text-text-muted opacity-60"
+                      >in.WC/100ft</span
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Primary Results Panel -->
+              <div
+                v-if="results"
+                class="p-6 border-l-2 border-sunset-glow bg-gradient-to-r from-[#15110f] to-[#0d0d0d] mb-12"
+              >
+                <div class="grid gap-4">
+                  <div class="flex justify-between items-center group/item">
+                    <span
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em]"
+                      >Equivalent Diameter</span
+                    >
+                    <div class="flex items-center gap-3">
+                      <span class="font-mono text-sm text-sunset-glow"
+                        >{{ results.equivDiameter }} in</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flex justify-between items-center group/item">
+                    <span
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em]"
+                      >Flow Area</span
+                    >
+                    <div class="flex items-center gap-3">
+                      <span class="font-mono text-sm text-sunset-glow"
+                        >{{ results.area }} ft²</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flex justify-between items-center group/item">
+                    <span
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em]"
+                      >Fluid Velocity</span
+                    >
+                    <div class="flex items-center gap-3">
+                      <span class="font-mono text-sm text-sunset-glow"
+                        >{{ results.velocity }} ft/min</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flex justify-between items-center group/item">
+                    <span
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em]"
+                      >Reynolds Number</span
+                    >
+                    <div class="flex items-center gap-3">
+                      <span class="font-mono text-sm text-sunset-glow"
+                        >{{ results.reynolds }}</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flex justify-between items-center group/item">
+                    <span
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em]"
+                      >Friction Factor</span
+                    >
+                    <div class="flex items-center gap-3">
+                      <span class="font-mono text-sm text-sunset-glow"
+                        >{{ results.frictionFactor }}</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flex justify-between items-center group/item">
+                    <span
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em]"
+                      >Velocity Pressure</span
+                    >
+                    <div class="flex items-center gap-3">
+                      <span class="font-mono text-sm text-sunset-glow"
+                        >{{ results.velocityPressure }} in.WC</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const { createApp, ref, computed } = Vue;
+
+      createApp({
+        setup() {
+          const cfm = ref(1000);
+          const headLoss = ref(0.08);
+          const width = ref(12);
+
+          // Constants provided by user
+          const RHO = 0.075; // lb/ft3
+          const MU_HR = 0.0432; // lb/ft·h
+          const CP = 0.24; // Btu/lb·F
+          const EF = 1.08; // BTU/h·F (Flow factor)
+
+          const results = computed(() => {
+            if (!cfm.value || !headLoss.value) return null;
+
+            // 1. Calculate Equivalent Diameter (De) based on Flow and Head Loss
+            const De = Math.pow(
+              (0.109136 * Math.pow(cfm.value, 1.9)) / headLoss.value,
+              1 / 5.02
+            );
+
+            // 2. Calculate Height (h) using the Huebscher Equation logic
+            let h = 1;
+            const w = width.value || 1;
+
+            while (
+              1.3 *
+                Math.pow(Math.pow(w * h, 0.625) / Math.pow(w + h, 0.25), 1) <
+              De
+            ) {
+              h += 0.5;
+              if (h > 500) break;
+            }
+            while (
+              1.3 *
+                Math.pow(Math.pow(w * h, 0.625) / Math.pow(w + h, 0.25), 1) >
+              De
+            ) {
+              h -= 0.01;
+            }
+
+            // Round height to nearest multiple of 2
+            const roundedH = Math.round(h);
+
+            // 3. Physical Properties based on Actual Rounded Size
+            const actualDe =
+              (1.3 * Math.pow(w * roundedH, 0.625)) /
+              Math.pow(w + roundedH, 0.25);
+            const actualHL =
+              (0.109136 * Math.pow(cfm.value, 1.9)) / Math.pow(actualDe, 5.02);
+
+            const area_ft2 = (w * roundedH) / 144;
+            const velocity_fpm = cfm.value / area_ft2;
+            const velocity_fph = velocity_fpm * 60;
+            const hydraulic_diameter_ft =
+              (2 * w * roundedH) / (w + roundedH) / 12;
+            const Re = (RHO * velocity_fph * hydraulic_diameter_ft) / MU_HR;
+            const vp = RHO * Math.pow(velocity_fpm / 1096.7, 2);
+
+            return {
+              originalHeight: h.toFixed(2),
+              height: roundedH,
+              actualHeadLoss: actualHL.toFixed(3),
+              equivDiameter: De.toFixed(2),
+              area: area_ft2.toFixed(3),
+              velocity: Math.round(velocity_fpm).toLocaleString(),
+              reynolds: Math.round(Re).toLocaleString(),
+              frictionFactor: (
+                actualHL /
+                ((12 / actualDe) * (vp * 100))
+              ).toFixed(5),
+              velocityPressure: vp.toFixed(4),
+            };
+          });
+
+          return { cfm, headLoss, width, results };
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>

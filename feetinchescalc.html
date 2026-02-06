@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Utility Hub - Sunset Low-Contrast</title>
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <script src="assets/tailwindcss.js"></script>
+    <script src="assets/vue.global.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg: "#0d0d0d",
+              "border-low": "#1a1614",
+              "border-med": "#2d2621",
+              "text-main": "#f4f4f4",
+              "text-muted": "#6b5c54",
+              "sunset-glow": "#ff8c42",
+              "sunset-dim": "#4a3728",
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      [v-cloak] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen font-sans bg-bg text-text-main m-0 antialiased selection:bg-sunset-glow selection:text-white"
+  >
+    <div id="app" v-cloak>
+      <header
+        class="border-b border-border-low p-5 bg-gradient-to-r from-[#0d0d0d] to-[#1a1614] flex justify-between items-center"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-2 h-2 bg-sunset-glow"></div>
+          <h1 class="text-lg font-medium tracking-tighter opacity-90 uppercase">
+            Feet & Inches Calculator
+          </h1>
+        </div>
+        <a
+          href="index.html"
+          class="text-text-muted hover:text-sunset-glow transition-colors text-sm uppercase tracking-wider flex items-center gap-2"
+        >
+          <span>&larr;</span> Back to Home
+        </a>
+      </header>
+
+      <main>
+        <!-- Measurement Adder Utility -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-[240px_1fr] border-b border-border-low group"
+        >
+          <!-- Margin Label -->
+          <div
+            class="border-b border-border-low md:border-b-0 md:border-r md:border-border-low p-10 uppercase tracking-[0.15em] text-[0.7rem] text-sunset-glow transition-colors duration-300"
+          >
+            Measurement Calculator<br />
+            <span class="opacity-40 font-normal mt-2 block lowercase italic"
+              >add or subtract measurements</span
+            >
+          </div>
+
+          <!-- Content Area -->
+          <div class="p-8 md:p-12">
+            <div class="max-w-[450px]">
+              <div class="flex items-center justify-between mb-4">
+                <label
+                  class="block text-[10px] text-text-muted uppercase tracking-widest"
+                  >Input Measurements</label
+                >
+                <div class="flex gap-2 text-[10px] uppercase tracking-wider">
+                  <button
+                    @click="calculationMode = 'add'"
+                    :class="calculationMode === 'add' ? 'text-sunset-glow' : 'text-text-muted hover:text-text-main'"
+                    class="transition-colors"
+                  >
+                    Add (+)
+                  </button>
+                  <span class="text-border-med">|</span>
+                  <button
+                    @click="calculationMode = 'subtract'"
+                    :class="calculationMode === 'subtract' ? 'text-sunset-glow' : 'text-text-muted hover:text-text-main'"
+                    class="transition-colors"
+                  >
+                    Subtract (-)
+                  </button>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div
+                  v-for="(row, index) in adderRows"
+                  :key="row.id"
+                  class="flex items-center gap-2 group/row"
+                >
+                  <input
+                    type="text"
+                    v-model="row.value"
+                    placeholder="e.g. 43' 10&quot;"
+                    class="font-mono appearance-none bg-[#12100e] border border-border-med p-3 text-text-main w-full outline-none transition-all duration-300 text-[0.95rem] hover:border-sunset-dim focus:border-sunset-glow focus:bg-[#181412] focus:shadow-[0_0_15px_rgba(255,140,66,0.1)] focus:ring-0"
+                    @keydown.enter.prevent="addRow"
+                  />
+                  <button
+                    @click="removeRow(index)"
+                    class="p-3 text-text-muted hover:text-red-500 transition-colors opacity-0 group-hover/row:opacity-100 focus:opacity-100"
+                    title="Remove Measurement"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+
+              <button
+                @click="addRow"
+                class="mt-4 text-[0.7rem] uppercase tracking-widest text-text-muted hover:text-sunset-glow transition-colors flex items-center gap-2"
+              >
+                <span>+</span> Add Measurement
+              </button>
+
+              <!-- Result Panel -->
+              <div
+                v-if="adderResults"
+                class="mt-8 p-6 border-l-2 border-sunset-glow bg-gradient-to-r from-[#15110f] to-[#0d0d0d] block animate-in fade-in slide-in-from-top-2 duration-300"
+              >
+                <div class="grid gap-4">
+                  <div>
+                    <div
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em] mb-1"
+                    >
+                      Total Decimal Feet
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div
+                        class="font-mono text-lg font-light text-sunset-glow"
+                      >
+                        {{ adderResults.decimalFeet }}'
+                      </div>
+                      <button
+                        @click="copyToClipboard(adderResults.decimalFeet + '\'', $event)"
+                        class="text-text-muted hover:text-sunset-glow transition-colors p-2"
+                        title="Copy Result"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <rect
+                            x="9"
+                            y="9"
+                            width="13"
+                            height="13"
+                            rx="2"
+                            ry="2"
+                          ></rect>
+                          <path
+                            d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                          ></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em] mb-1"
+                    >
+                      Total Feet & Decimal Inches
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div
+                        class="font-mono text-lg font-light text-sunset-glow"
+                      >
+                        {{ adderResults.feetDecInch }}
+                      </div>
+                      <button
+                        @click="copyToClipboard(adderResults.feetDecInch, $event)"
+                        class="text-text-muted hover:text-sunset-glow transition-colors p-2"
+                        title="Copy Result"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <rect
+                            x="9"
+                            y="9"
+                            width="13"
+                            height="13"
+                            rx="2"
+                            ry="2"
+                          ></rect>
+                          <path
+                            d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                          ></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div
+                      class="text-[10px] text-text-muted uppercase tracking-[0.1em] mb-1"
+                    >
+                      Total Feet & Fract. Inches
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div
+                        class="font-mono text-lg font-light text-sunset-glow"
+                      >
+                        {{ adderResults.feetFractInch }}
+                      </div>
+                      <button
+                        @click="copyToClipboard(adderResults.feetFractInch, $event)"
+                        class="text-text-muted hover:text-sunset-glow transition-colors p-2"
+                        title="Copy Result"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <rect
+                            x="9"
+                            y="9"
+                            width="13"
+                            height="13"
+                            rx="2"
+                            ry="2"
+                          ></rect>
+                          <path
+                            d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                          ></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const { createApp, ref, computed } = Vue;
+
+      createApp({
+        setup() {
+          // --- Adder Logic ---
+          const adderRows = ref([{ id: Date.now(), value: "" }]);
+          const calculationMode = ref("add");
+
+          const addRow = () => {
+            adderRows.value.push({ id: Date.now(), value: "" });
+          };
+
+          const removeRow = (index) => {
+            if (adderRows.value.length > 1) {
+              adderRows.value.splice(index, 1);
+            } else {
+              adderRows.value[0].value = "";
+            }
+          };
+
+          const adderResults = computed(() => {
+            let totalFeet = 0;
+            let hasValid = false;
+            let values = [];
+
+            // Parse all rows first
+            adderRows.value.forEach((row) => {
+              const line = row.value.trim();
+              if (!line) return;
+              const val = parseMeasurement(line);
+              if (val !== null) {
+                values.push(val);
+                hasValid = true;
+              }
+            });
+
+            if (!hasValid) return null;
+
+            if (calculationMode.value === "add") {
+              totalFeet = values.reduce((sum, current) => sum + current, 0);
+            } else {
+              // Subtraction: First value minus the rest
+              if (values.length === 0) return null;
+              totalFeet = values[0];
+              for (let i = 1; i < values.length; i++) {
+                totalFeet -= values[i];
+              }
+            }
+
+            // 1. Decimal Feet
+            const decimalFeet = totalFeet.toFixed(4);
+
+            // 2. Feet & Decimal Inches
+            const tFeet = Math.floor(totalFeet);
+
+            const tInches = (totalFeet - tFeet) * 12;
+            const feetDecInch = `${tFeet}' ${tInches.toFixed(2)}"`;
+
+            // 3. Feet & Fractional Inches
+            const wInches = Math.floor(tInches);
+            const dInches = tInches - wInches;
+            const fract = decimalToFraction(dInches);
+            let feetFractInch = `${tFeet}' ${wInches}`;
+            if (fract) feetFractInch += ` ${fract}`;
+            feetFractInch += `"`;
+
+            return {
+              decimalFeet,
+              feetDecInch,
+              feetFractInch,
+            };
+          });
+
+          // Helper Functions
+          const copyToClipboard = async (text, event) => {
+            if (!text) return;
+            try {
+              await navigator.clipboard.writeText(text);
+
+              // Visual Feedback (change icon logic simplified for one-file)
+              const btn = event.currentTarget;
+              const originalHTML = btn.innerHTML;
+
+              // Show checkmark
+              btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+              setTimeout(() => {
+                btn.innerHTML = originalHTML;
+              }, 1500);
+            } catch (err) {
+              console.error("Failed to copy!", err);
+            }
+          };
+
+          function decimalToFraction(decimal) {
+            if (decimal < 0.01) return "";
+            const sixteenths = Math.round(decimal * 16);
+            if (sixteenths === 0) return "";
+            if (sixteenths === 16) return "1";
+
+            let num = sixteenths;
+            let den = 16;
+            const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+            const common = gcd(num, den);
+            return `${num / common}/${den / common}`;
+          }
+
+          function parseMeasurement(str) {
+            if (/^-?\d+(\.\d+)?'$/.test(str)) {
+              return parseFloat(str.replace("'", ""));
+            }
+
+            let feet = 0;
+            let inches = 0;
+
+            const feetMatch = str.match(/^(-?\d+(\.\d+)?)'/);
+            if (feetMatch) {
+              feet = parseFloat(feetMatch[1]);
+              str = str.substring(feetMatch[0].length).trim();
+            }
+
+            if (str.endsWith('"')) {
+              const valStr = str.slice(0, -1).trim();
+              if (!valStr) return feet;
+
+              const mixedMatch = valStr.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+              if (mixedMatch) {
+                inches =
+                  parseFloat(mixedMatch[1]) +
+                  parseFloat(mixedMatch[2]) / parseFloat(mixedMatch[3]);
+              } else if (valStr.includes("/")) {
+                const fracMatch = valStr.match(/^(\d+)\/(\d+)$/);
+                if (fracMatch) {
+                  inches = parseFloat(fracMatch[1]) / parseFloat(fracMatch[2]);
+                }
+              } else {
+                if (!isNaN(parseFloat(valStr))) {
+                  inches = parseFloat(valStr);
+                }
+              }
+            }
+            return feet + inches / 12;
+          }
+
+          return {
+            adderRows,
+            adderResults,
+            calculationMode,
+            addRow,
+            removeRow,
+            copyToClipboard,
+          };
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>
