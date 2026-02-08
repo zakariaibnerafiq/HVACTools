@@ -1,1242 +1,1508 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AirFlow Designer - Utility Hub</title>
-  <link rel="stylesheet" href="assets/fonts.css" />
-  <script src="assets/tailwindcss.js"></script>
-  <script src="assets/vue.global.js"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            bg: "#0d0d0d",
-            "border-low": "#1a1614",
-            "border-med": "#2d2621",
-            "text-main": "#f4f4f4",
-            "text-muted": "#6b5c54",
-            "sunset-glow": "#ff8c42",
-            "sunset-dim": "#4a3728",
-          },
-          fontFamily: {
-            sans: ["Inter", "sans-serif"],
-            mono: ["Roboto Mono", "monospace"],
-          },
-        },
-      },
-    };
-  </script>
-  <style>
-    [v-cloak] {
-      display: none;
-    }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AirFlow Designer - Utility Hub</title>
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <script src="assets/tailwindcss.js"></script>
+    <script src="assets/vue.global.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bg: "#0d0d0d",
+                        "border-low": "#1a1614",
+                        "border-med": "#2d2621",
+                        "text-main": "#f4f4f4",
+                        "text-muted": "#6b5c54",
+                        "sunset-glow": "#ff8c42",
+                        "sunset-dim": "#4a3728",
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"],
+                        mono: ["Roboto Mono", "monospace"],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        [v-cloak] {
+            display: none;
+        }
 
-    canvas {
-      background-color: #0d0d0d;
-      cursor: crosshair;
-    }
+        canvas {
+            background-color: #0d0d0d;
+            cursor: crosshair;
+        }
 
-    .tool-group {
-      display: flex;
-      flex-direction: row;
-      gap: 4px;
-      background: transparent;
-      padding: 0;
-      border-radius: 0;
-      flex-wrap: wrap;
-    }
+        .tool-group {
+            display: flex;
+            flex-direction: row;
+            gap: 4px;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            flex-wrap: wrap;
+        }
 
-    .tool-btn {
-      @apply px-3 py-2 text-[10px] uppercase tracking-wider transition-all duration-100 border border-transparent rounded-sm;
-      background: #0d0d0d;
-      color: #6b5c54;
-    }
+        .tool-btn {
+            @apply px-3 py-2 text-[10px] uppercase tracking-wider transition-all duration-100 border border-transparent rounded-sm;
+            background: #0d0d0d;
+            color: #6b5c54;
+        }
 
-    .tool-btn:hover {
-      @apply bg-[#1a1614] text-white border-border-low;
-    }
+        .tool-btn:hover {
+            @apply bg-[#1a1614] text-white border-border-low;
+        }
 
-    .tool-btn-active {
-      @apply bg-[#1f1b19] text-sunset-glow border-border-med shadow-inner;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
+        .tool-btn-active {
+            @apply bg-[#1f1b19] text-sunset-glow border-border-med shadow-inner;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
 
-    .tool-btn-inactive {
-      @apply text-text-muted;
-    }
-  </style>
+        .tool-btn-inactive {
+            @apply text-text-muted;
+        }
+    </style>
 </head>
 
 <body class="min-h-screen font-sans bg-bg text-text-main m-0 antialiased">
-  <div id="app" v-cloak class="h-screen flex flex-col relative overflow-hidden">
-    <!-- Floating Toolbar -->
-    <div
-      class="absolute top-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-1 bg-[#0d0d0d]/90 backdrop-blur-md border border-border-low rounded-lg p-1 shadow-2xl">
-      <button v-for="t in tools" :key="t.id" @click="setTool(t.id)"
-        :class="mode === t.id ? 'bg-[#1a1614] text-sunset-glow shadow-inner' : 'text-text-muted hover:text-white hover:bg-[#1a1614]/50'"
-        class="p-2 rounded-md transition-all duration-200 group relative" :title="t.label">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <!-- Icons based on tool ID -->
-          <path v-if="t.id === 'select'" d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
-          <path v-if="t.id === 'select'" d="M13 13l6 6" />
-
-          <path v-if="t.id === 'move'" d="M9 5l3-3 3 3M5 9l-3 3 3 3M9 19l3 3 3-3M19 9l3 3-3 3" />
-          <path v-if="t.id === 'move'" d="M12 2v20M2 12h20" />
-
-          <rect v-if="t.id === 'terminal'" x="3" y="3" width="18" height="18" rx="2" ry="2" />
-          <path v-if="t.id === 'terminal'" d="M9 12h6m-3-3v6" />
-
-          <circle v-if="t.id === 'branch'" cx="12" cy="12" r="10" />
-          <path v-if="t.id === 'branch'" d="M12 8v8m-4-4h8" />
-
-          <circle v-if="t.id === 'duct'" cx="12" cy="12" r="3" />
-          <path v-if="t.id === 'duct'" d="M5 5l14 14" />
-
-          <path v-if="t.id === 'flip'" d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-          <path v-if="t.id === 'flip'" d="M16 6l-4-4-4 4" />
-          <path v-if="t.id === 'flip'" d="M12 2v13" />
-        </svg>
-      </button>
-    </div>
-
-    <header class="border-b border-border-low p-5 bg-[#0d0d0d] flex justify-between items-center z-10">
-      <div class="flex items-center gap-3">
-        <div class="w-2 h-2 bg-sunset-glow rounded-full"></div>
-        <h1 class="text-lg font-medium tracking-tighter text-white uppercase">
-          AirFlow Designer
-        </h1>
-        <div class="w-px h-4 bg-border-low mx-2"></div>
-
-        <!-- View Controls -->
-        <div class="flex items-center gap-2">
-          <button @click="resetView"
-            class="px-2 py-1 text-[10px] uppercase tracking-wider text-text-muted hover:text-white border border-transparent hover:border-border-low rounded transition-all"
-            title="Reset Zoom & Pan">
-            Reset View
-          </button>
-          <label class="flex items-center gap-2 cursor-pointer group">
-            <div class="relative">
-              <input type="checkbox" v-model="snapToGrid" class="peer sr-only">
-              <div class="w-8 h-4 bg-[#1a1614] rounded-full peer-checked:bg-sunset-glow/20 transition-all"></div>
-              <div
-                class="absolute left-0 top-0 w-4 h-4 bg-text-muted rounded-full peer-checked:bg-sunset-glow peer-checked:translate-x-full transition-all scale-75">
-              </div>
-            </div>
-            <span
-              class="text-[10px] uppercase tracking-wider text-text-muted group-hover:text-white transition-colors">Snap
-              Grid</span>
-          </label>
-        </div>
-      </div>
-      <a href="index.html"
-        class="text-text-muted hover:text-sunset-glow transition-colors text-xs uppercase tracking-wider flex items-center gap-2">
-        <span>&larr;</span> Back to Home
-      </a>
-    </header>
-
-    <main class="flex-1 flex overflow-hidden">
-      <!-- Canvas Area -->
-      <div class="flex-1 relative bg-[#090909] cursor-crosshair" @mousemove="updateMouse"
-        @mousedown.prevent="handleCanvasClick" @mouseup="handleMouseUp" @wheel.prevent="handleWheel">
-        <canvas ref="canvasRef" :width="canvasWidth" :height="canvasHeight" class="block"></canvas>
-
+    <div id="app" v-cloak class="h-screen flex flex-col relative overflow-hidden">
+        <!-- Floating Toolbar -->
         <div
-          class="absolute bottom-6 left-6 text-[10px] text-text-muted tracking-widest uppercase opacity-50 pointer-events-none font-mono">
-          {{ mode }} mode | <span v-if="mouseWorld">W: {{ Math.round(mouseWorld.x) }}, {{ Math.round(mouseWorld.y)
-            }}</span> | Drag: {{ draggingNode !== null ? draggingNode : 'None' }}
-        </div>
-      </div>
+            class="absolute top-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-1 bg-[#0d0d0d]/90 backdrop-blur-md border border-border-low rounded-lg p-1 shadow-2xl">
+            <button v-for="t in tools" :key="t.id" @click="setTool(t.id)"
+                :class="mode === t.id ? 'bg-[#1a1614] text-sunset-glow shadow-inner' : 'text-text-muted hover:text-white hover:bg-[#1a1614]/50'"
+                class="p-2 rounded-md transition-all duration-200 group relative" :title="t.label">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Icons based on tool ID -->
+                    <path v-if="t.id === 'select'" d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+                    <path v-if="t.id === 'select'" d="M13 13l6 6" />
 
-      <!-- Properties Sidebar -->
-      <div class="w-[280px] bg-[#0d0d0d] border-l border-border-low flex flex-col z-20">
-        <div class="p-6 border-b border-border-low">
-          <h2 class="text-[10px] text-text-muted uppercase tracking-[0.2em] mb-1">
-            Properties Panel
-          </h2>
-          <div v-if="selectedNode !== null && nodes[selectedNode]" class="mb-4">
-            <div class="text-sunset-glow text-sm font-mono mb-2">
-              {{ nodes[selectedNode].type === 'terminal' ? 'Terminal' : 'Junction' }} #{{ selectedNode }}
-            </div>
-            <button @click="deleteSelected"
-              class="w-full py-1 px-2 mb-2 text-[10px] uppercase tracking-wider border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-all rounded-sm flex items-center justify-center gap-2">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-              Delete Node
+                    <path v-if="t.id === 'move'" d="M9 5l3-3 3 3M5 9l-3 3 3 3M9 19l3 3 3-3M19 9l3 3-3 3" />
+                    <path v-if="t.id === 'move'" d="M12 2v20M2 12h20" />
+
+                    <rect v-if="t.id === 'terminal'" x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <path v-if="t.id === 'terminal'" d="M9 12h6m-3-3v6" />
+
+                    <circle v-if="t.id === 'branch'" cx="12" cy="12" r="10" />
+                    <path v-if="t.id === 'branch'" d="M12 8v8m-4-4h8" />
+
+                    <circle v-if="t.id === 'duct'" cx="12" cy="12" r="3" />
+                    <path v-if="t.id === 'duct'" d="M5 5l14 14" />
+
+                    <path v-if="t.id === 'flip'" d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                    <path v-if="t.id === 'flip'" d="M16 6l-4-4-4 4" />
+                    <path v-if="t.id === 'flip'" d="M12 2v13" />
+                </svg>
             </button>
-          </div>
-          <div v-else class="text-text-muted italic text-sm">
-            No selection
-          </div>
         </div>
 
-        <div class="p-6 flex-1 overflow-y-auto">
-          <div v-if="selectedNode !== null && nodes[selectedNode]" class="space-y-6">
-            <!-- Terminal Properties -->
-            <div v-if="nodes[selectedNode].type === 'terminal'" class="space-y-3">
-              <div>
-                <label class="text-[10px] text-text-muted uppercase tracking-widest block">Airflow (CFM)</label>
-                <input type="number" v-model.number="nodes[selectedNode].cfm" @input="recalcAndRender"
-                  class="w-full bg-[#12100e] border border-border-med p-3 text-text-main outline-none text-right font-mono focus:border-sunset-glow focus:shadow-[0_0_15px_rgba(255,140,66,0.1)] transition-all" />
-              </div>
+        <header class="border-b border-border-low p-5 bg-[#0d0d0d] flex justify-between items-center z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 bg-sunset-glow rounded-full"></div>
+                <h1 class="text-lg font-medium tracking-tighter text-white uppercase">
+                    AirFlow Designer
+                </h1>
+                <div class="w-px h-4 bg-border-low mx-2"></div>
+
+                <!-- View Controls -->
+                <div class="flex items-center gap-2">
+                    <button @click="resetView"
+                        class="px-2 py-1 text-[10px] uppercase tracking-wider text-text-muted hover:text-white border border-transparent hover:border-border-low rounded transition-all"
+                        title="Reset Zoom & Pan">
+                        Reset View
+                    </button>
+                    <label class="flex items-center gap-2 cursor-pointer group">
+                        <div class="relative">
+                            <input type="checkbox" v-model="snapToGrid" class="peer sr-only" />
+                            <div
+                                class="w-8 h-4 bg-[#1a1614] rounded-full peer-checked:bg-sunset-glow/20 transition-all">
+                            </div>
+                            <div
+                                class="absolute left-0 top-0 w-4 h-4 bg-text-muted rounded-full peer-checked:bg-sunset-glow peer-checked:translate-x-full transition-all scale-75">
+                            </div>
+                        </div>
+                        <span
+                            class="text-[10px] uppercase tracking-wider text-text-muted group-hover:text-white transition-colors">Snap
+                            Grid</span>
+                    </label>
+                </div>
+            </div>
+            <a href="index.html"
+                class="text-text-muted hover:text-sunset-glow transition-colors text-xs uppercase tracking-wider flex items-center gap-2">
+                <span>&larr;</span> Back to Home
+            </a>
+        </header>
+
+        <main class="flex-1 flex overflow-hidden">
+            <!-- Canvas Area -->
+            <div class="flex-1 relative bg-[#090909] cursor-crosshair" @mousemove="updateMouse"
+                @mousedown.prevent="handleCanvasClick" @mouseup="handleMouseUp" @wheel.prevent="handleWheel">
+                <canvas ref="canvasRef" :width="canvasWidth" :height="canvasHeight" class="block"></canvas>
+
+                <div
+                    class="absolute bottom-6 left-6 text-[10px] text-text-muted tracking-widest uppercase opacity-50 pointer-events-none font-mono">
+                    {{ mode }} mode |
+                    <span v-if="mouseWorld">W: {{ Math.round(mouseWorld.x) }}, {{
+                        Math.round(mouseWorld.y) }}</span>
+                    | Drag: {{ draggingNode !== null ? draggingNode : 'None'
+                    }}
+                </div>
             </div>
 
-            <div v-if="nodes[selectedNode].type === 'branch'" class="text-xs text-text-muted">
-              Junctions do not have modifiable properties. Connect ducts to
-              route flow.
+            <!-- Properties Sidebar -->
+            <div class="w-[280px] bg-[#0d0d0d] border-l border-border-low flex flex-col z-20">
+                <div class="p-6 border-b border-border-low">
+                    <h2 class="text-[10px] text-text-muted uppercase tracking-[0.2em] mb-1">
+                        Properties Panel
+                    </h2>
+                    <div v-if="selectedNode !== null && nodes[selectedNode]" class="mb-4">
+                        <div class="text-sunset-glow text-sm font-mono mb-2">
+                            {{ nodes[selectedNode].type === 'terminal' ?
+                            'Terminal' : 'Junction' }} #{{ selectedNode }}
+                        </div>
+                        <button @click="deleteSelected"
+                            class="w-full py-1 px-2 mb-2 text-[10px] uppercase tracking-wider border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-all rounded-sm flex items-center justify-center gap-2">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                            Delete Node
+                        </button>
+                    </div>
+                    <div v-else class="text-text-muted italic text-sm">
+                        No selection
+                    </div>
+                </div>
+
+                <div class="p-6 flex-1 overflow-y-auto">
+                    <div v-if="selectedNode !== null && nodes[selectedNode]" class="space-y-6">
+                        <!-- Terminal Properties -->
+                        <div v-if="nodes[selectedNode].type === 'terminal'" class="space-y-3">
+                            <div>
+                                <label class="text-[10px] text-text-muted uppercase tracking-widest block">Airflow
+                                    (CFM)</label>
+                                <input type="number" v-model.number="nodes[selectedNode].cfm" @input="recalcAndRender"
+                                    class="w-full bg-[#12100e] border border-border-med p-3 text-text-main outline-none text-right font-mono focus:border-sunset-glow focus:shadow-[0_0_15px_rgba(255,140,66,0.1)] transition-all" />
+                            </div>
+                        </div>
+
+                        <div v-if="nodes[selectedNode].type === 'branch'" class="text-xs text-text-muted">
+                            Junctions do not have modifiable properties.
+                            Connect ducts to route flow.
+                        </div>
+                    </div>
+
+                    <!-- Edge Properties -->
+                    <div v-else-if="selectedEdge !== null && edges[selectedEdge]" class="space-y-6">
+                        <div class="text-sunset-glow text-sm font-mono mb-2">
+                            Duct Segment #{{ selectedEdge }}
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Flow
+                                Rate</label>
+                            <div class="text-lg font-mono text-text-main">
+                                {{ edges[selectedEdge].flow }} CFM
+                            </div>
+                        </div>
+
+                        <div class="border-t border-border-med pt-4">
+                            <label class="flex items-center gap-2 cursor-pointer mb-4">
+                                <input type="checkbox" v-model="edges[selectedEdge].isCustom" @change="() => {
+                      // Init dimensions if enabling
+                      if(edges[selectedEdge].isCustom && edges[selectedEdge].ductSize) {
+                         const parts = edges[selectedEdge].ductSize.split('x');
+                         if(parts.length === 2) {
+                           edges[selectedEdge].customWidth = parts[0];
+                           edges[selectedEdge].customHeight = parts[1];
+                         }
+                      }
+                      recalcAndRender();
+                  }" class="accent-sunset-glow" />
+                                <span class="text-[10px] text-text-muted uppercase tracking-widest">Manual Size
+                                    Override</span>
+                            </label>
+
+                            <div v-if="edges[selectedEdge].isCustom" class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[9px] text-text-muted block mb-1">Width</label>
+                                    <input type="text" v-model="edges[selectedEdge].customWidth" @input="() => {
+                           edges[selectedEdge].customSize = `${edges[selectedEdge].customWidth||0}x${edges[selectedEdge].customHeight||0}`;
+                           recalcAndRender();
+                        }" class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-text-muted block mb-1">Height</label>
+                                    <input type="text" v-model="edges[selectedEdge].customHeight" @input="() => {
+                           edges[selectedEdge].customSize = `${edges[selectedEdge].customWidth||0}x${edges[selectedEdge].customHeight||0}`;
+                           recalcAndRender();
+                        }" class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-center mt-10">
+                        <div
+                            class="w-8 h-8 rounded-full border border-border-med flex items-center justify-center mx-auto mb-3 text-border-med">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                        </div>
+                        <p class="text-xs text-text-muted">
+                            Select a terminal to edits its CFM value.<br />
+                            Select a duct to override size.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-6 border-t border-border-low space-y-3 bg-[#0a0a0a]">
+                    <div class="space-y-3 mb-6">
+                        <label class="text-[10px] text-text-muted uppercase tracking-widest block">New Terminal
+                            CFM</label>
+                        <input type="number" v-model.number="defaultCfm"
+                            class="w-full bg-[#12100e] border border-border-med p-2 text-text-muted text-sm outline-none text-right font-mono focus:border-border-low focus:text-text-main transition-all" />
+                    </div>
+                    <button @click="undo" :disabled="history.length === 0"
+                        class="w-full py-3 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white hover:border-text-muted disabled:opacity-20 transition-all rounded-sm">
+                        Undo
+                    </button>
+                    <button @click="clearAll"
+                        class="w-full py-3 text-[10px] uppercase tracking-widest bg-[#12100e] border border-red-900/30 text-red-800 hover:text-red-500 hover:border-red-500/50 transition-all rounded-sm">
+                        Reset Canvas
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-border-low">
+                        <button @click="exportJSON"
+                            class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white hover:border-sunset-glow transition-all rounded-sm flex items-center justify-center gap-1">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Save
+                        </button>
+                        <button @click="triggerImport"
+                            class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white hover:border-sunset-glow transition-all rounded-sm flex items-center justify-center gap-1">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Load
+                        </button>
+                        <input type="file" id="importFile" accept=".json" class="hidden" @change="importJSON" />
+                    </div>
+
+                    <!-- Load Sheet Section -->
+                    <div class="mt-4 pt-4 border-t border-border-low space-y-3">
+                        <h3 class="text-[10px] text-text-muted uppercase tracking-widest">
+                            Duct Size Schedule
+                        </h3>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[9px] text-text-muted block mb-1">CFM Column</label>
+                                <input type="text" v-model="loadSheetColumns.cfmCol"
+                                    class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all" />
+                            </div>
+                            <div>
+                                <label class="text-[9px] text-text-muted block mb-1">Size Column</label>
+                                <input type="text" v-model="loadSheetColumns.sizeCol"
+                                    class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <button @click="triggerLoadSheetUpload"
+                                class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-sunset-glow/50 text-sunset-glow hover:bg-sunset-glow/10 transition-all rounded-sm flex items-center justify-center gap-1">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                                </svg>
+                                Upload CSV
+                            </button>
+                            <button @click="clearLoadSheet" :disabled="loadSheet.length === 0"
+                                class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white disabled:opacity-30 transition-all rounded-sm">
+                                Clear
+                            </button>
+                            <input type="file" id="loadSheetFile" accept=".csv" class="hidden"
+                                @change="handleLoadSheetUpload" />
+                        </div>
+
+                        <div v-if="loadSheetStatus" class="text-[10px] font-mono"
+                            :class="loadSheetStatus.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
+                            {{ loadSheetStatus }}
+                        </div>
+
+                        <button @click="showLoadSheetDialog = true"
+                            class="w-full py-2 text-[10px] uppercase tracking-widest bg-[#1a1614] border border-border-med text-text-muted hover:text-white hover:border-sunset-glow transition-all rounded-sm flex items-center justify-center gap-2">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Manage Schedule
+                        </button>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div v-else class="text-center mt-10">
+        </main>
+
+        <!-- Load Sheet Management Modal -->
+        <div v-if="showLoadSheetDialog"
+            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
             <div
-              class="w-8 h-8 rounded-full border border-border-med flex items-center justify-center mx-auto mb-3 text-border-med">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
+                class="bg-[#0d0d0d] border border-border-low rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="p-4 border-b border-border-low flex justify-between items-center bg-[#0a0a0a]">
+                    <h2 class="text-xs text-text-muted uppercase tracking-widest font-bold">
+                        Duct Size Schedule
+                    </h2>
+                    <button @click="showLoadSheetDialog = false"
+                        class="text-text-muted hover:text-white transition-colors">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Entry List -->
+                <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-[#090909]">
+                    <div v-if="loadSheet.length === 0" class="text-center py-10 text-text-muted italic text-xs">
+                        No entries in schedule.
+                    </div>
+                    <div v-for="(entry, idx) in loadSheet" :key="idx"
+                        class="flex items-center justify-between p-3 bg-[#12100e] border border-border-med rounded-md group hover:border-sunset-glow/50 transition-all">
+                        <div class="flex gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-text-muted uppercase">CFM</span>
+                                <span class="text-sm font-mono text-text-main">{{ entry.cfm.toLocaleString() }}</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-text-muted uppercase">Size</span>
+                                <span class="text-sm font-mono text-sunset-glow">{{ entry.ductSize }}</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button @click="openEditEntry(idx)"
+                                class="p-1 text-text-muted hover:text-white transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button @click="deleteEntry(idx)"
+                                class="p-1 text-red-500/50 hover:text-red-500 transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path
+                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add/Edit Form -->
+                <div class="p-4 border-t border-border-low bg-[#0a0a0a] space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase block mb-1">CFM Value</label>
+                            <input type="text" v-model="editCfm" placeholder="e.g. 1,000"
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main outline-none font-mono text-sm focus:border-sunset-glow transition-all" />
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase block mb-1">Duct Size</label>
+                            <input type="text" v-model="editSize" placeholder="e.g. 12x8"
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main outline-none font-mono text-sm focus:border-sunset-glow transition-all" />
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="saveEntry"
+                            class="flex-1 py-2 text-[10px] uppercase font-bold tracking-widest bg-sunset-glow text-bg hover:brightness-110 transition-all rounded-sm flex items-center justify-center gap-2">
+                            {{ editingEntry === null ? 'Add Entry' : 'Update Entry' }}
+                        </button>
+                        <button v-if="editingEntry !== null" @click="editingEntry = null; editCfm = ''; editSize = ''"
+                            class="px-4 py-2 text-[10px] uppercase tracking-widest border border-border-med text-text-muted hover:text-white transition-all rounded-sm">
+                            Cancel Edit
+                        </button>
+                    </div>
+                </div>
             </div>
-            <p class="text-xs text-text-muted">
-              Select a terminal to edits its CFM value.
-            </p>
-          </div>
         </div>
-
-        <div class="p-6 border-t border-border-low space-y-3 bg-[#0a0a0a]">
-          <div class="space-y-3 mb-6">
-            <label class="text-[10px] text-text-muted uppercase tracking-widest block">New Terminal CFM</label>
-            <input type="number" v-model.number="defaultCfm"
-              class="w-full bg-[#12100e] border border-border-med p-2 text-text-muted text-sm outline-none text-right font-mono focus:border-border-low focus:text-text-main transition-all" />
-          </div>
-          <button @click="undo" :disabled="history.length === 0"
-            class="w-full py-3 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white hover:border-text-muted disabled:opacity-20 transition-all rounded-sm">
-            Undo
-          </button>
-          <button @click="clearAll"
-            class="w-full py-3 text-[10px] uppercase tracking-widest bg-[#12100e] border border-red-900/30 text-red-800 hover:text-red-500 hover:border-red-500/50 transition-all rounded-sm">
-            Reset Canvas
-          </button>
-
-          <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-border-low">
-            <button @click="exportJSON"
-              class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white hover:border-sunset-glow transition-all rounded-sm flex items-center justify-center gap-1">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Save
-            </button>
-            <button @click="triggerImport"
-              class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white hover:border-sunset-glow transition-all rounded-sm flex items-center justify-center gap-1">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              Load
-            </button>
-            <input type="file" id="importFile" accept=".json" class="hidden" @change="importJSON">
-          </div>
-
-          <!-- Load Sheet Section -->
-          <div class="mt-4 pt-4 border-t border-border-low space-y-3">
-            <h3 class="text-[10px] text-text-muted uppercase tracking-widest">Duct Size Schedule</h3>
-
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-[9px] text-text-muted block mb-1">CFM Column</label>
-                <input type="text" v-model="loadSheetColumns.cfmCol"
-                  class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all">
-              </div>
-              <div>
-                <label class="text-[9px] text-text-muted block mb-1">Size Column</label>
-                <input type="text" v-model="loadSheetColumns.sizeCol"
-                  class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              <button @click="triggerLoadSheetUpload"
-                class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-sunset-glow/50 text-sunset-glow hover:bg-sunset-glow/10 transition-all rounded-sm flex items-center justify-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                Upload CSV
-              </button>
-              <button @click="clearLoadSheet" :disabled="loadSheet.length === 0"
-                class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white disabled:opacity-30 transition-all rounded-sm">
-                Clear
-              </button>
-              <input type="file" id="loadSheetFile" accept=".csv" class="hidden" @change="handleLoadSheetUpload">
-            </div>
-
-            <div v-if="loadSheetStatus" class="text-[10px] font-mono"
-              :class="loadSheetStatus.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
-              {{ loadSheetStatus }}
-            </div>
-
-            <button v-if="loadSheet.length > 0 || loadSheetStatus" @click="showLoadSheetDialog = true"
-              class="w-full py-2 text-[10px] uppercase tracking-widest bg-[#1a1614] border border-border-med text-text-muted hover:text-white hover:border-sunset-glow transition-all rounded-sm flex items-center justify-center gap-2">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              Manage Schedule
-            </button>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <!-- Load Sheet Management Modal -->
-    <div v-if="showLoadSheetDialog"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div
-        class="bg-[#0d0d0d] border border-border-low rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="p-4 border-b border-border-low flex justify-between items-center bg-[#0a0a0a]">
-          <h2 class="text-xs text-text-muted uppercase tracking-widest font-bold">Duct Size Schedule</h2>
-          <button @click="showLoadSheetDialog = false" class="text-text-muted hover:text-white transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Entry List -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-[#090909]">
-          <div v-if="loadSheet.length === 0" class="text-center py-10 text-text-muted italic text-xs">
-            No entries in schedule.
-          </div>
-          <div v-for="(entry, idx) in loadSheet" :key="idx"
-            class="flex items-center justify-between p-3 bg-[#12100e] border border-border-med rounded-md group hover:border-sunset-glow/50 transition-all">
-            <div class="flex gap-4">
-              <div class="flex flex-col">
-                <span class="text-[9px] text-text-muted uppercase">CFM</span>
-                <span class="text-sm font-mono text-text-main">{{ entry.cfm.toLocaleString() }}</span>
-              </div>
-              <div class="flex flex-col">
-                <span class="text-[9px] text-text-muted uppercase">Size</span>
-                <span class="text-sm font-mono text-sunset-glow">{{ entry.ductSize }}</span>
-              </div>
-            </div>
-            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button @click="openEditEntry(idx)" class="p-1 text-text-muted hover:text-white transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </button>
-              <button @click="deleteEntry(idx)" class="p-1 text-red-500/50 hover:text-red-500 transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Add/Edit Form -->
-        <div class="p-4 border-t border-border-low bg-[#0a0a0a] space-y-3">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-[10px] text-text-muted uppercase block mb-1">CFM Value</label>
-              <input type="text" v-model="editCfm" placeholder="e.g. 1,000"
-                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main outline-none font-mono text-sm focus:border-sunset-glow transition-all">
-            </div>
-            <div>
-              <label class="text-[10px] text-text-muted uppercase block mb-1">Duct Size</label>
-              <input type="text" v-model="editSize" placeholder="e.g. 12x8"
-                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main outline-none font-mono text-sm focus:border-sunset-glow transition-all">
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <button @click="saveEntry"
-              class="flex-1 py-2 text-[10px] uppercase font-bold tracking-widest bg-sunset-glow text-bg hover:brightness-110 transition-all rounded-sm flex items-center justify-center gap-2">
-              {{ editingEntry === null ? 'Add Entry' : 'Update Entry' }}
-            </button>
-            <button v-if="editingEntry !== null" @click="editingEntry = null; editCfm = ''; editSize = ''"
-              class="px-4 py-2 text-[10px] uppercase tracking-widest border border-border-med text-text-muted hover:text-white transition-all rounded-sm">
-              Cancel Edit
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <script>
-    const { createApp, ref, onMounted, onUnmounted, computed } = Vue;
-
-    createApp({
-      setup() {
-        const canvasRef = ref(null);
-        const mode = ref("select"); // Default mode
-        const defaultCfm = ref(500);
-        const nodes = ref([]);
-        const edges = ref([]);
-        const history = ref([]);
-        const selectedNode = ref(null);
-        const hoveredEdge = ref(null);
-        const mousePos = ref({ x: 0, y: 0 }); // Screen coordinates
-        const mouseWorld = ref({ x: 0, y: 0 }); // World coordinates
-
-        // Interaction State
-        const transform = ref({ scale: 1, offsetX: 0, offsetY: 0 });
-        const snapToGrid = ref(false);
-        const isPanning = ref(false);
-        const draggingNode = ref(null); // Index of node being dragged
-        const lastMouse = ref({ x: 0, y: 0 });
-
-        const canvasWidth = ref(1200);
-        const canvasHeight = ref(800);
-
-        // Load Sheet State
-        const loadSheet = ref([]); // Array of { cfm: number, ductSize: string }, sorted by cfm
-        const loadSheetColumns = ref({ cfmCol: 'CFM', sizeCol: 'Size' });
-        const loadSheetStatus = ref(''); // Status message for UI
-
-        const tools = [
-          { id: "select", label: "Select / Edit" },
-          { id: "move", label: "Move Node" }, // New Tool
-          { id: "terminal", label: "Add Terminal" },
-          { id: "branch", label: "Add Junction" },
-          { id: "duct", label: "Draw Duct" },
-          { id: "flip", label: "Flip Flow" },
-        ];
-
-        const setTool = (id) => {
-          mode.value = id;
-          // If switching to tools that require no selection, maybe clear?
-          // keeping selection allows contextual actions though.
-          if (id !== "select") {
-            // selectedNode.value = null;
-          }
-        };
-
-        const deleteSelected = () => {
-          if (selectedNode.value === null) return;
-
-          saveHistory();
-          const idx = selectedNode.value;
-
-          // Remove connected edges
-          edges.value = edges.value.filter(e => e.from !== idx && e.to !== idx);
-
-          // Remove node
-          nodes.value.splice(idx, 1);
-
-          // Fix indices in edges
-          edges.value.forEach(e => {
-            if (e.from > idx) e.from--;
-            if (e.to > idx) e.to--;
-          });
-
-          selectedNode.value = null;
-          recalcAndRender();
-        };
-
-        const handleKeydown = (e) => {
-          if (e.key === "Escape") {
-            if (draggingNode.value !== null) {
-              draggingNode.value = null;
-            }
-            if (selectedNode.value !== null) {
-              selectedNode.value = null;
-              render();
-            }
-          }
-          if (e.key === "Delete" || e.key === "Backspace") {
-            deleteSelected();
-          }
-        };
-
-        // --- PERSISTENCE ---
-        const saveToLocalStorage = () => {
-          const data = {
-            nodes: nodes.value,
-            edges: edges.value,
-            version: 1
-          };
-          localStorage.setItem("ariflow_data", JSON.stringify(data));
-        };
-
-        const loadFromLocalStorage = () => {
-          const raw = localStorage.getItem("ariflow_data");
-          if (raw) {
-            try {
-              const data = JSON.parse(raw);
-              if (data.nodes && data.edges) {
-                nodes.value = data.nodes;
-                edges.value = data.edges;
-              }
-            } catch (e) {
-              console.error("Failed to load local data", e);
-            }
-          }
-        };
-
-        const exportJSON = () => {
-          const data = {
-            nodes: nodes.value,
-            edges: edges.value,
-            version: 1,
-            timestamp: new Date().toISOString()
-          };
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `airflow-design-${new Date().toISOString().slice(0, 10)}.json`;
-          a.click();
-          URL.revokeObjectURL(url);
-        };
-
-        const importJSON = (event) => {
-          const file = event.target.files[0];
-          if (!file) return;
-
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            try {
-              const data = JSON.parse(e.target.result);
-              if (data.nodes && data.edges) {
-                saveHistory(); // Save current before overwriting
-                nodes.value = data.nodes;
-                edges.value = data.edges;
-                selectedNode.value = null;
-                recalcAndRender();
-              } else {
-                alert("Invalid JSON file format");
-              }
-            } catch (err) {
-              alert("Error parsing JSON file");
-            }
-            // Reset input
-            event.target.value = "";
-          };
-          reader.readAsText(file);
-        };
-
-        const triggerImport = () => {
-          document.getElementById('importFile').click();
-        };
-
-        // --- LOAD SHEET FUNCTIONS ---
-        const parseLoadSheetCSV = (csvText) => {
-          const lines = csvText.trim().split(/\r?\n/);
-          if (lines.length < 2) {
-            loadSheetStatus.value = 'Error: CSV has no data rows';
-            return;
-          }
-
-          // Parse header
-          const headers = lines[0].split(',').map(h => h.trim());
-          const cfmIdx = headers.findIndex(h => h.toLowerCase() === loadSheetColumns.value.cfmCol.toLowerCase());
-          const sizeIdx = headers.findIndex(h => h.toLowerCase() === loadSheetColumns.value.sizeCol.toLowerCase());
-
-          if (cfmIdx === -1 || sizeIdx === -1) {
-            loadSheetStatus.value = `Error: Columns "${loadSheetColumns.value.cfmCol}" or "${loadSheetColumns.value.sizeCol}" not found`;
-            return;
-          }
-
-          // Parse data rows with proper CSV handling (respects quoted fields)
-          const parseCSVLine = (line) => {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-              const char = line[i];
-              if (char === '"') {
-                inQuotes = !inQuotes;
-              } else if (char === ',' && !inQuotes) {
-                result.push(current.trim());
-                current = '';
-              } else {
-                current += char;
-              }
-            }
-            result.push(current.trim());
-            return result;
-          };
-
-          const entries = [];
-          for (let i = 1; i < lines.length; i++) {
-            const cols = parseCSVLine(lines[i]);
-            // Strip commas from CFM value (handles "1,000" format)
-            const cfmRaw = (cols[cfmIdx] || '').replace(/,/g, '');
-            const cfmVal = parseFloat(cfmRaw);
-            let sizeVal = cols[sizeIdx];
-            if (!isNaN(cfmVal) && sizeVal) {
-              // Strip inch symbols and normalize
-              sizeVal = sizeVal.replace(/["'″′]/g, '').trim();
-              // Normalize x separator to lowercase x
-              sizeVal = sizeVal.replace(/\s*[xX×]\s*/g, 'x');
-              entries.push({ cfm: cfmVal, ductSize: sizeVal });
-            }
-          }
-
-          // Sort by CFM ascending
-          entries.sort((a, b) => a.cfm - b.cfm);
-          loadSheet.value = entries;
-          loadSheetStatus.value = `${entries.length} sizes loaded`;
-          saveLoadSheetToStorage();
-
-          // Apply to existing ducts
-          applyDuctSizes();
-          recalcAndRender();
-        };
-
-        const handleLoadSheetUpload = (event) => {
-          const file = event.target.files[0];
-          if (!file) return;
-
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            parseLoadSheetCSV(e.target.result);
-            event.target.value = "";
-          };
-          reader.readAsText(file);
-        };
-
-        const triggerLoadSheetUpload = () => {
-          document.getElementById('loadSheetFile').click();
-        };
-
-        // Load Sheet Persistence
-        const saveLoadSheetToStorage = () => {
-          localStorage.setItem("ariflow_loadsheet", JSON.stringify(loadSheet.value));
-        };
-
-        const loadLoadSheetFromStorage = () => {
-          const raw = localStorage.getItem("ariflow_loadsheet");
-          if (raw) {
-            try {
-              loadSheet.value = JSON.parse(raw);
-              if (loadSheet.value.length > 0) {
-                loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
-              }
-            } catch (e) {
-              console.error("Failed to load load sheet", e);
-            }
-          }
-        };
-
-        // Edit Dialog State
-        const showLoadSheetDialog = ref(false);
-        const editingEntry = ref(null); // null = adding new, otherwise index
-        const editCfm = ref('');
-        const editSize = ref('');
-
-        const openAddEntry = () => {
-          editingEntry.value = null;
-          editCfm.value = '';
-          editSize.value = '';
-          showLoadSheetDialog.value = true;
-        };
-
-        const openEditEntry = (idx) => {
-          editingEntry.value = idx;
-          editCfm.value = loadSheet.value[idx].cfm.toString();
-          editSize.value = loadSheet.value[idx].ductSize;
-          showLoadSheetDialog.value = true;
-        };
-
-        const saveEntry = () => {
-          const cfmVal = parseFloat(editCfm.value.replace(/,/g, ''));
-          const sizeVal = editSize.value.trim().replace(/["'″′]/g, '').replace(/\s*[xX×]\s*/g, 'x');
-
-          if (isNaN(cfmVal) || !sizeVal) {
-            alert("Please enter valid CFM and Size values");
-            return;
-          }
-
-          if (editingEntry.value === null) {
-            // Add new
-            loadSheet.value.push({ cfm: cfmVal, ductSize: sizeVal });
-          } else {
-            // Update existing
-            loadSheet.value[editingEntry.value] = { cfm: cfmVal, ductSize: sizeVal };
-          }
-
-          // Re-sort by CFM
-          loadSheet.value.sort((a, b) => a.cfm - b.cfm);
-          loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
-          saveLoadSheetToStorage();
-          showLoadSheetDialog.value = false;
-          recalcAndRender();
-        };
-
-        const deleteEntry = (idx) => {
-          loadSheet.value.splice(idx, 1);
-          loadSheetStatus.value = loadSheet.value.length > 0 ? `${loadSheet.value.length} sizes loaded` : '';
-          saveLoadSheetToStorage();
-          recalcAndRender();
-        };
-
-        const clearLoadSheet = () => {
-          loadSheet.value = [];
-          loadSheetStatus.value = '';
-          localStorage.removeItem("ariflow_loadsheet");
-          // Clear duct sizes from edges
-          edges.value.forEach(e => {
-            delete e.ductSize;
-          });
-          recalcAndRender();
-        };
-
-        const getDuctSizeForCFM = (cfmValue) => {
-          if (loadSheet.value.length === 0) return null;
-
-          // Floor lookup: find largest entry where entry.cfm <= cfmValue
-          let result = null;
-          for (const entry of loadSheet.value) {
-            if (entry.cfm <= cfmValue) {
-              result = entry.ductSize;
-            } else {
-              break; // Since sorted, no need to continue
-            }
-          }
-          return result;
-        };
-
-        const applyDuctSizes = () => {
-          // Apply duct sizes to edges based on their flow CFM
-          edges.value.forEach(e => {
-            e.ductSize = getDuctSizeForCFM(e.flow) || null;
-          });
-        };
-
-        // --- COORDINATE SYSTEMS ---
-        const screenToWorld = (sx, sy) => {
-          return {
-            x: (sx - transform.value.offsetX) / transform.value.scale,
-            y: (sy - transform.value.offsetY) / transform.value.scale
-          };
-        };
-
-        const getDistToEdge = (px, py, x1, y1, x2, y2) => {
-          const l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
-          if (l2 === 0) return Math.hypot(px - x1, py - y1);
-          let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
-          t = Math.max(0, Math.min(1, t));
-          return Math.hypot(
-            px - (x1 + t * (x2 - x1)),
-            py - (y1 + t * (y2 - y1))
-          );
-        };
-
-        const saveHistory = () => {
-          history.value.push(
-            JSON.stringify({
-              nodes: nodes.value,
-              edges: edges.value,
-            })
-          );
-          if (history.value.length > 20) history.value.shift();
-        };
-
-        const undo = () => {
-          if (history.value.length === 0) return;
-          const state = JSON.parse(history.value.pop());
-          nodes.value = state.nodes;
-          edges.value = state.edges;
-          selectedNode.value = null;
-          recalcAndRender();
-        };
-
-        const recalcAndRender = () => {
-          calculateFlows();
-          applyDuctSizes();
-          saveToLocalStorage();
-          render();
-        };
-
-        const calculateFlows = () => {
-          edges.value.forEach((e) => (e.flow = 0));
-
-          const getReachableCFM = (startNode, visited = new Set()) => {
-            if (visited.has(startNode)) return 0;
-            visited.add(startNode);
-
-            let total =
-              nodes.value[startNode].type === "terminal"
-                ? nodes.value[startNode].cfm
-                : 0;
-
-            edges.value
-              .filter((e) => e.from === startNode)
-              .forEach((e) => {
-                const down = getReachableCFM(e.to, visited);
-                e.flow = down;
-              });
-
-            return (
-              total +
-              edges.value
-                .filter((e) => e.from === startNode)
-                .reduce((acc, e) => acc + e.flow, 0)
-            );
-          };
-
-          const roots = nodes.value
-            .map((_, i) => i)
-            .filter((i) => !edges.value.some((e) => e.to === i));
-          roots.forEach((r) => getReachableCFM(r));
-        };
-
-        // --- INTERACTION HANDLERS ---
-
-        const resetView = () => {
-          transform.value = { scale: 1, offsetX: 0, offsetY: 0 };
-          render();
-        };
-
-        const handleWheel = (e) => {
-          const zoomIntensity = 0.1;
-          const direction = e.deltaY > 0 ? -1 : 1;
-          const factor = 1 + (direction * zoomIntensity);
-
-          // Zoom point (mouse pos)
-          const rect = canvasRef.value.getBoundingClientRect();
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
-
-          // World before zoom
-          const wx = (mouseX - transform.value.offsetX) / transform.value.scale;
-          const wy = (mouseY - transform.value.offsetY) / transform.value.scale;
-
-          // Apply zoom
-          let newScale = transform.value.scale * factor;
-          newScale = Math.max(0.1, Math.min(newScale, 5)); // Limits
-
-          transform.value.scale = newScale;
-
-          // Adjust offset to keep mouse world point stable
-          transform.value.offsetX = mouseX - wx * newScale;
-          transform.value.offsetY = mouseY - wy * newScale;
-
-          render();
-        };
-
-        const updateMouse = (e) => {
-          const rect = canvasRef.value.getBoundingClientRect();
-          const mx = e.clientX - rect.left;
-          const my = e.clientY - rect.top;
-
-          mousePos.value = { x: mx, y: my };
-
-          // Current World Coord (for drawing preview etc)
-          const w = screenToWorld(mx, my);
-          mouseWorld.value = w;
-
-          // PANNING
-          if (isPanning.value) {
-            const dx = mx - lastMouse.value.x;
-            const dy = my - lastMouse.value.y;
-            transform.value.offsetX += dx;
-            transform.value.offsetY += dy;
-            lastMouse.value = { x: mx, y: my };
-            render();
-            return;
-          }
-
-          // DRAGGING NODE
-          if (draggingNode.value !== null) {
-            // Snap logic
-            let tx = w.x;
-            let ty = w.y;
-
-            if (snapToGrid.value) {
-              tx = Math.round(tx / 20) * 20;
-              ty = Math.round(ty / 20) * 20;
-            }
-
-            nodes.value[draggingNode.value].x = tx;
-            nodes.value[draggingNode.value].y = ty;
-
-            recalcAndRender();
-            return;
-          }
-
-          // HOVER CHECKS
-          let minDist = 20 / transform.value.scale;
-          let foundIdx = null;
-          edges.value.forEach((edge, idx) => {
-            const n1 = nodes.value[edge.from];
-            const n2 = nodes.value[edge.to];
-            const d = getDistToEdge(w.x, w.y, n1.x, n1.y, n2.x, n2.y);
-            if (d < minDist) {
-              minDist = d;
-              foundIdx = idx;
-            }
-          });
-          hoveredEdge.value = foundIdx;
-          render();
-        };
-
-        const handleCanvasClick = (e) => { // Actual mousedown
-          const rect = canvasRef.value.getBoundingClientRect();
-          const mx = e.clientX - rect.left;
-          const my = e.clientY - rect.top;
-          lastMouse.value = { x: mx, y: my };
-
-          // Pan Check (Middle Click or Alt)
-          if (e.button === 1 || e.altKey) {
-            isPanning.value = true;
-            return;
-          }
-
-          saveHistory();
-          const w = screenToWorld(mx, my);
-          let finalX = w.x;
-          let finalY = w.y;
-
-          // Apply Snap on Click (for new Nodes)
-          if (snapToGrid.value && (mode.value === 'terminal' || mode.value === 'branch')) {
-            finalX = Math.round(finalX / 20) * 20;
-            finalY = Math.round(finalY / 20) * 20;
-          }
-
-          // Apply Snap on Draw Duct (endpoint) - Maybe? User didn't request explicitly but good UX.
-          // Let's stick to Node Move/Place as requested.
-
-          // Hit test nodes (radius constant 25 for easier selection)
-          const clickedNodeIdx = nodes.value.findIndex(
-            (n) => Math.hypot(n.x - w.x, n.y - w.y) < 25
-          );
-
-          // MOVE TOOL
-          if (mode.value === "move") {
-            if (clickedNodeIdx !== -1) {
-              draggingNode.value = clickedNodeIdx;
-              selectedNode.value = clickedNodeIdx;
-            }
-          }
-
-          // SELECT MODE
-          else if (mode.value === "select") {
-            if (clickedNodeIdx !== -1) {
-              selectedNode.value = clickedNodeIdx;
-            } else {
-              selectedNode.value = null;
-            }
-          }
-
-          // ADD TERMINAL
-          else if (mode.value === "terminal") {
-            if (clickedNodeIdx === -1) {
-              nodes.value.push({
-                x: finalX,
-                y: finalY,
-                cfm: defaultCfm.value,
-                type: "terminal",
-              });
-              selectedNode.value = nodes.value.length - 1;
-            }
-          }
-
-          // ADD JUNCTION
-          else if (mode.value === "branch") {
-            if (clickedNodeIdx === -1) {
-              nodes.value.push({ x: finalX, y: finalY, cfm: 0, type: "branch" });
-              selectedNode.value = nodes.value.length - 1;
-            }
-          }
-
-          // DRAW DUCT
-          else if (mode.value === "duct") {
-            if (clickedNodeIdx !== -1) {
-              if (selectedNode.value !== null && nodes.value[selectedNode.value]) {
-                if (selectedNode.value !== clickedNodeIdx) {
-                  const exists = edges.value.some(
-                    (e) =>
-                      (e.from === selectedNode.value && e.to === clickedNodeIdx) ||
-                      (e.to === selectedNode.value && e.from === clickedNodeIdx)
-                  );
-                  if (!exists) {
-                    edges.value.push({
-                      from: selectedNode.value,
-                      to: clickedNodeIdx,
-                      flow: 0,
+    <script>
+        const { createApp, ref, onMounted, onUnmounted, computed } = Vue;
+
+        createApp({
+            setup() {
+                const canvasRef = ref(null);
+                const mode = ref("select"); // Default mode
+                const defaultCfm = ref(500);
+                const nodes = ref([]);
+                const edges = ref([]);
+                const history = ref([]);
+                const selectedNode = ref(null);
+                const selectedEdge = ref(null); // Index of selected edge
+                const hoveredEdge = ref(null);
+                const mousePos = ref({ x: 0, y: 0 }); // Screen coordinates
+                const mouseWorld = ref({ x: 0, y: 0 }); // World coordinates
+
+                // Interaction State
+                const transform = ref({ scale: 1, offsetX: 0, offsetY: 0 });
+                const snapToGrid = ref(false);
+                const isPanning = ref(false);
+                const draggingNode = ref(null); // Index of node being dragged
+                const lastMouse = ref({ x: 0, y: 0 });
+
+                const canvasWidth = ref(1200);
+                const canvasHeight = ref(800);
+
+                // Load Sheet State
+                const loadSheet = ref([]); // Array of { cfm: number, ductSize: string }, sorted by cfm
+                const loadSheetColumns = ref({
+                    cfmCol: "CFM",
+                    sizeCol: "Size",
+                });
+                const loadSheetStatus = ref(""); // Status message for UI
+
+                const tools = [
+                    { id: "select", label: "Select / Edit" },
+                    { id: "move", label: "Move Node" }, // New Tool
+                    { id: "terminal", label: "Add Terminal" },
+                    { id: "branch", label: "Add Junction" },
+                    { id: "duct", label: "Draw Duct" },
+                    { id: "flip", label: "Flip Flow" },
+                ];
+
+                const setTool = (id) => {
+                    mode.value = id;
+                    // If switching to tools that require no selection, maybe clear?
+                    // keeping selection allows contextual actions though.
+                    if (id !== "select") {
+                        // selectedNode.value = null;
+                    }
+                };
+
+                const deleteSelected = () => {
+                    if (selectedNode.value === null) return;
+
+                    saveHistory();
+                    const idx = selectedNode.value;
+
+                    // Remove connected edges
+                    edges.value = edges.value.filter(
+                        (e) => e.from !== idx && e.to !== idx,
+                    );
+
+                    // Remove node
+                    nodes.value.splice(idx, 1);
+
+                    // Fix indices in edges
+                    edges.value.forEach((e) => {
+                        if (e.from > idx) e.from--;
+                        if (e.to > idx) e.to--;
                     });
-                    selectedNode.value = clickedNodeIdx;
-                  }
-                }
-              } else {
-                selectedNode.value = clickedNodeIdx;
-              }
-            }
-          }
 
-          // FLIP
-          else if (mode.value === "flip" && hoveredEdge.value !== null) {
-            const e = edges.value[hoveredEdge.value];
-            [e.from, e.to] = [e.to, e.from];
-          }
+                    selectedNode.value = null;
+                    recalcAndRender();
+                };
 
-          recalcAndRender();
-        };
+                const handleKeydown = (e) => {
+                    if (e.key === "Escape") {
+                        if (draggingNode.value !== null) {
+                            draggingNode.value = null;
+                        }
+                        if (selectedNode.value !== null) {
+                            selectedNode.value = null;
+                            render();
+                        }
+                    }
+                    if (e.key === "Delete" || e.key === "Backspace") {
+                        deleteSelected();
+                    }
+                };
 
-        const handleMouseUp = () => {
-          isPanning.value = false;
-          draggingNode.value = null;
-        };
+                // --- PERSISTENCE ---
+                const saveToLocalStorage = () => {
+                    const data = {
+                        nodes: nodes.value,
+                        edges: edges.value,
+                        version: 1,
+                    };
+                    localStorage.setItem(
+                        "ariflow_data",
+                        JSON.stringify(data),
+                    );
+                };
 
-        const render = () => {
-          if (!canvasRef.value) return;
-          const ctx = canvasRef.value.getContext("2d");
-          ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value);
+                const loadFromLocalStorage = () => {
+                    const raw = localStorage.getItem("ariflow_data");
+                    if (raw) {
+                        try {
+                            const data = JSON.parse(raw);
+                            if (data.nodes && data.edges) {
+                                nodes.value = data.nodes;
+                                edges.value = data.edges;
+                            }
+                        } catch (e) {
+                            console.error("Failed to load local data", e);
+                        }
+                    }
+                };
 
-          ctx.save();
-          // Apply Transformations
-          ctx.translate(transform.value.offsetX, transform.value.offsetY);
-          ctx.scale(transform.value.scale, transform.value.scale);
+                const exportJSON = () => {
+                    const data = {
+                        nodes: nodes.value,
+                        edges: edges.value,
+                        loadSheet: loadSheet.value,
+                        loadSheetColumns: loadSheetColumns.value,
+                        version: 1,
+                        timestamp: new Date().toISOString(),
+                    };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], {
+                        type: "application/json",
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `airflow-design-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
 
-          // Grid Drawing (Infinite-ish)
-          // We need to calculate visible world bounds
-          const tl = screenToWorld(0, 0);
-          const br = screenToWorld(canvasWidth.value, canvasHeight.value);
+                const importJSON = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
 
-          ctx.strokeStyle = "#1a1614";
-          ctx.lineWidth = 1 / transform.value.scale; // Keep line width constant on screen
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (data.nodes && data.edges) {
+                                saveHistory(); // Save current before overwriting
+                                nodes.value = data.nodes;
+                                edges.value = data.edges;
 
-          const gridSize = 40;
-          const startX = Math.floor(tl.x / gridSize) * gridSize;
-          const endX = Math.ceil(br.x / gridSize) * gridSize;
-          const startY = Math.floor(tl.y / gridSize) * gridSize;
-          const endY = Math.ceil(br.y / gridSize) * gridSize;
+                                if (data.loadSheet) {
+                                    loadSheet.value = data.loadSheet;
+                                    if (data.loadSheetColumns) {
+                                        loadSheetColumns.value =
+                                            data.loadSheetColumns;
+                                    }
+                                    loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
+                                    saveLoadSheetToStorage();
+                                }
 
-          for (let i = startX; i <= endX; i += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(i, startY);
-            ctx.lineTo(i, endY);
-            ctx.stroke();
-          }
-          for (let i = startY; i <= endY; i += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(startX, i);
-            ctx.lineTo(endX, i);
-            ctx.stroke();
-          }
+                                selectedNode.value = null;
+                                recalcAndRender();
+                            } else {
+                                alert("Invalid JSON file format");
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            alert("Error parsing JSON file");
+                        }
+                        // Reset input
+                        event.target.value = "";
+                    };
+                    reader.readAsText(file);
+                };
 
-          // Draw Arrow Helper
-          const drawArrow = (ctx, x1, y1, x2, y2) => {
-            const angle = Math.atan2(y2 - y1, x2 - x1);
-            const mx = (x1 + x2) / 2;
-            const my = (y1 + y2) / 2;
+                const triggerImport = () => {
+                    document.getElementById("importFile").click();
+                };
 
-            ctx.save();
-            ctx.translate(mx, my);
-            ctx.rotate(angle);
+                // --- LOAD SHEET FUNCTIONS ---
+                const parseLoadSheetCSV = (csvText) => {
+                    const lines = csvText.trim().split(/\r?\n/);
+                    if (lines.length < 2) {
+                        loadSheetStatus.value =
+                            "Error: CSV has no data rows";
+                        return;
+                    }
 
-            const headLen = 6 / transform.value.scale; // Scale arrow head? No, usually icons scale with zoom or stay fixed? 
-            // Previous code used constant 6. If we zoom in, it gets bigger. Which is standard canvas behavior.
-            // Let's keep it standard.
+                    // Parse header
+                    const headers = lines[0]
+                        .split(",")
+                        .map((h) => h.trim());
+                    const cfmIdx = headers.findIndex(
+                        (h) =>
+                            h.toLowerCase() ===
+                            loadSheetColumns.value.cfmCol.toLowerCase(),
+                    );
+                    const sizeIdx = headers.findIndex(
+                        (h) =>
+                            h.toLowerCase() ===
+                            loadSheetColumns.value.sizeCol.toLowerCase(),
+                    );
 
-            ctx.beginPath();
-            ctx.moveTo(-6, -3);
-            ctx.lineTo(6, 0);
-            ctx.lineTo(-6, 3);
-            ctx.fillStyle = "#ff8c42";
-            ctx.fill();
+                    if (cfmIdx === -1 || sizeIdx === -1) {
+                        loadSheetStatus.value = `Error: Columns "${loadSheetColumns.value.cfmCol}" or "${loadSheetColumns.value.sizeCol}" not found`;
+                        return;
+                    }
 
-            ctx.restore();
-          };
+                    // Parse data rows with proper CSV handling (respects quoted fields)
+                    const parseCSVLine = (line) => {
+                        const result = [];
+                        let current = "";
+                        let inQuotes = false;
+                        for (let i = 0; i < line.length; i++) {
+                            const char = line[i];
+                            if (char === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (char === "," && !inQuotes) {
+                                result.push(current.trim());
+                                current = "";
+                            } else {
+                                current += char;
+                            }
+                        }
+                        result.push(current.trim());
+                        return result;
+                    };
 
-          // Edges (Ducts)
-          edges.value.forEach((e, idx) => {
-            const n1 = nodes.value[e.from];
-            const n2 = nodes.value[e.to];
-            const isHovered = (hoveredEdge.value === idx && mode.value === "flip");
+                    const entries = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = parseCSVLine(lines[i]);
+                        // Strip commas from CFM value (handles "1,000" format)
+                        const cfmRaw = (cols[cfmIdx] || "").replace(
+                            /,/g,
+                            "",
+                        );
+                        const cfmVal = parseFloat(cfmRaw);
+                        let sizeVal = cols[sizeIdx];
+                        if (!isNaN(cfmVal) && sizeVal) {
+                            // Strip inch symbols and normalize
+                            sizeVal = sizeVal.replace(/["'″′]/g, "").trim();
+                            // Normalize x separator to lowercase x
+                            sizeVal = sizeVal.replace(/\s*[xX×]\s*/g, "x");
+                            entries.push({
+                                cfm: cfmVal,
+                                ductSize: sizeVal,
+                            });
+                        }
+                    }
 
-            ctx.beginPath();
-            ctx.moveTo(n1.x, n1.y);
-            ctx.lineTo(n2.x, n2.y);
-            ctx.strokeStyle = isHovered ? "#ffffff" : "#2d2621";
-            ctx.lineWidth = Math.max(6, Math.min(20, 6 + e.flow / 200));
-            ctx.lineCap = "round";
-            ctx.stroke();
+                    // Sort by CFM ascending
+                    entries.sort((a, b) => a.cfm - b.cfm);
+                    loadSheet.value = entries;
+                    loadSheetStatus.value = `${entries.length} sizes loaded`;
+                    saveLoadSheetToStorage();
 
-            drawArrow(ctx, n1.x, n1.y, n2.x, n2.y);
+                    // Apply to existing ducts
+                    applyDuctSizes();
+                    recalcAndRender();
+                };
 
-            if (e.flow > 0) {
-              const mx = (n1.x + n2.x) / 2;
-              const my = (n1.y + n2.y) / 2;
-              ctx.fillStyle = "#ff8c42";
-              ctx.font = `bold 10px "Roboto Mono"`;
-              ctx.textAlign = "center";
-              ctx.fillText(`${e.flow} CFM`, mx, my - 12);
+                const handleLoadSheetUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
 
-              // Show duct size if available (below arrow)
-              if (e.ductSize) {
-                ctx.fillStyle = "#fff";
-                ctx.font = `bold 11px "Roboto Mono"`;
-                ctx.fillText(e.ductSize, mx, my + 16);
-              }
-            }
-          });
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        parseLoadSheetCSV(e.target.result);
+                        event.target.value = "";
+                    };
+                    reader.readAsText(file);
+                };
 
-          // Preview Line (Duct Draw)
-          if (mode.value === "duct" && selectedNode.value !== null && nodes.value[selectedNode.value]) {
-            const sn = nodes.value[selectedNode.value];
+                const triggerLoadSheetUpload = () => {
+                    document.getElementById("loadSheetFile").click();
+                };
 
-            // MouseWorld is updated in updateMouse
-            let tx = mouseWorld.value.x;
-            let ty = mouseWorld.value.y;
+                // Load Sheet Persistence
+                const saveLoadSheetToStorage = () => {
+                    localStorage.setItem(
+                        "ariflow_loadsheet",
+                        JSON.stringify(loadSheet.value),
+                    );
+                };
 
-            if (snapToGrid.value) {
-              tx = Math.round(tx / 20) * 20;
-              ty = Math.round(ty / 20) * 20;
-            }
+                const loadLoadSheetFromStorage = () => {
+                    const raw = localStorage.getItem("ariflow_loadsheet");
+                    if (raw) {
+                        try {
+                            loadSheet.value = JSON.parse(raw);
+                            if (loadSheet.value.length > 0) {
+                                loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
+                            }
+                        } catch (e) {
+                            console.error("Failed to load load sheet", e);
+                        }
+                    }
+                };
 
-            ctx.beginPath();
-            ctx.moveTo(sn.x, sn.y);
-            ctx.lineTo(tx, ty);
-            ctx.strokeStyle = "#ff8c42";
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          }
+                // Edit Dialog State
+                const showLoadSheetDialog = ref(false);
+                const editingEntry = ref(null); // null = adding new, otherwise index
+                const editCfm = ref("");
+                const editSize = ref("");
 
-          // Nodes
-          nodes.value.forEach((n, i) => {
-            const isSelected = i === selectedNode.value;
+                const openAddEntry = () => {
+                    editingEntry.value = null;
+                    editCfm.value = "";
+                    editSize.value = "";
+                    showLoadSheetDialog.value = true;
+                };
 
-            if (n.type === "terminal") {
-              // Symbol: Box with X
-              const size = 12;
-              ctx.save();
-              ctx.translate(n.x, n.y);
+                const openEditEntry = (idx) => {
+                    editingEntry.value = idx;
+                    editCfm.value = loadSheet.value[idx].cfm.toString();
+                    editSize.value = loadSheet.value[idx].ductSize;
+                    showLoadSheetDialog.value = true;
+                };
 
-              // Fill background
-              ctx.fillStyle = "#0d0d0d";
-              ctx.fillRect(-size, -size, size * 2, size * 2);
+                const saveEntry = () => {
+                    const cfmVal = parseFloat(
+                        editCfm.value.replace(/,/g, ""),
+                    );
+                    const sizeVal = editSize.value
+                        .trim()
+                        .replace(/["'″′]/g, "")
+                        .replace(/\s*[xX×]\s*/g, "x");
 
-              // Stroke
-              ctx.strokeStyle = isSelected ? "#fff" : "#ff8c42";
-              ctx.lineWidth = 2;
-              ctx.strokeRect(-size, -size, size * 2, size * 2);
+                    if (isNaN(cfmVal) || !sizeVal) {
+                        alert("Please enter valid CFM and Size values");
+                        return;
+                    }
 
-              // X
-              ctx.beginPath();
-              ctx.moveTo(-size, -size);
-              ctx.lineTo(size, size);
-              ctx.moveTo(size, -size);
-              ctx.lineTo(-size, size);
-              ctx.stroke();
+                    if (editingEntry.value === null) {
+                        // Add new
+                        loadSheet.value.push({
+                            cfm: cfmVal,
+                            ductSize: sizeVal,
+                        });
+                    } else {
+                        // Update existing
+                        loadSheet.value[editingEntry.value] = {
+                            cfm: cfmVal,
+                            ductSize: sizeVal,
+                        };
+                    }
 
-              ctx.restore();
+                    // Re-sort by CFM
+                    loadSheet.value.sort((a, b) => a.cfm - b.cfm);
+                    loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
+                    saveLoadSheetToStorage();
+                    showLoadSheetDialog.value = false;
+                    recalcAndRender();
+                };
 
-              // Labels
-              ctx.textAlign = "center";
-              if (n.cfm) {
-                ctx.fillStyle = isSelected ? "#fff" : "#6b5c54";
-                ctx.font = '9px "Inter"';
-                ctx.fillText(`${n.cfm} CFM`, n.x, n.y + size + 12);
-              }
-            } else {
-              // Junction
-              ctx.beginPath();
-              ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
-              ctx.fillStyle = isSelected ? "#fff" : "#4a3728";
-              ctx.fill();
-              ctx.strokeStyle = isSelected ? "#fff" : "#4a3728";
-              ctx.stroke();
-            }
-          });
+                const deleteEntry = (idx) => {
+                    loadSheet.value.splice(idx, 1);
+                    loadSheetStatus.value =
+                        loadSheet.value.length > 0
+                            ? `${loadSheet.value.length} sizes loaded`
+                            : "";
+                    saveLoadSheetToStorage();
+                    recalcAndRender();
+                };
 
-          ctx.restore(); // Restore Identity for any UI overlays? 
-          // Currently no screen-space UI overlays in canvas path.
-        };
+                const clearLoadSheet = () => {
+                    loadSheet.value = [];
+                    loadSheetStatus.value = "";
+                    localStorage.removeItem("ariflow_loadsheet");
+                    // Clear duct sizes from edges
+                    edges.value.forEach((e) => {
+                        delete e.ductSize;
+                    });
+                    recalcAndRender();
+                };
 
-        const clearAll = () => {
-          nodes.value = [];
-          edges.value = [];
-          selectedNode.value = null;
-          render();
-        };
+                const getDuctSizeForCFM = (cfmValue) => {
+                    if (loadSheet.value.length === 0) return null;
 
-        onMounted(() => {
-          // Initial canvas sizing
-          const container = canvasRef.value.parentElement;
-          canvasWidth.value = container.clientWidth;
-          canvasHeight.value = container.clientHeight;
+                    // Floor lookup: find largest entry where entry.cfm <= cfmValue
+                    let result = null;
+                    for (const entry of loadSheet.value) {
+                        if (entry.cfm <= cfmValue) {
+                            result = entry.ductSize;
+                        } else {
+                            break; // Since sorted, no need to continue
+                        }
+                    }
+                    return result;
+                };
 
-          // Resize observer
-          new ResizeObserver(() => {
-            canvasWidth.value = container.clientWidth;
-            canvasHeight.value = container.clientHeight;
-            render();
-          }).observe(container);
+                const applyDuctSizes = () => {
+                    // Apply duct sizes to edges based on their flow CFM
+                    edges.value.forEach((e) => {
+                        if (e.isCustom && e.customSize) {
+                            e.ductSize = e.customSize; // Use manual override
+                        } else {
+                            e.ductSize = getDuctSizeForCFM(e.flow) || null;
+                        }
+                    });
+                };
 
-          window.addEventListener("keydown", handleKeydown);
+                // --- COORDINATE SYSTEMS ---
+                const screenToWorld = (sx, sy) => {
+                    return {
+                        x:
+                            (sx - transform.value.offsetX) /
+                            transform.value.scale,
+                        y:
+                            (sy - transform.value.offsetY) /
+                            transform.value.scale,
+                    };
+                };
 
-          loadFromLocalStorage();
-          loadLoadSheetFromStorage();
-          render();
-        });
+                const getDistToEdge = (px, py, x1, y1, x2, y2) => {
+                    const l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
+                    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+                    let t =
+                        ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) /
+                        l2;
+                    t = Math.max(0, Math.min(1, t));
+                    return Math.hypot(
+                        px - (x1 + t * (x2 - x1)),
+                        py - (y1 + t * (y2 - y1)),
+                    );
+                };
 
-        onUnmounted(() => {
-          window.removeEventListener("keydown", handleKeydown);
-        });
+                const saveHistory = () => {
+                    history.value.push(
+                        JSON.stringify({
+                            nodes: nodes.value,
+                            edges: edges.value,
+                        }),
+                    );
+                    if (history.value.length > 20) history.value.shift();
+                };
 
-        return {
-          canvasRef,
-          mode,
-          tools,
-          setTool,
-          nodes,
-          edges,
-          selectedNode,
-          history,
-          defaultCfm,
-          undo,
-          clearAll,
-          recalcAndRender,
-          updateMouse,
-          handleCanvasClick,
-          canvasWidth,
-          canvasHeight,
-          handleMouseUp,
-          handleWheel,
-          resetView,
-          snapToGrid,
-          mouseWorld,
-          draggingNode,
-          deleteSelected,
-          exportJSON,
-          importJSON,
-          triggerImport,
-          loadSheet,
-          loadSheetColumns,
-          loadSheetStatus,
-          triggerLoadSheetUpload,
-          handleLoadSheetUpload,
-          clearLoadSheet,
-          showLoadSheetDialog,
-          editingEntry,
-          editCfm,
-          editSize,
-          openAddEntry,
-          openEditEntry,
-          saveEntry,
-          deleteEntry,
-        };
-      },
-    }).mount("#app");
-  </script>
+                const undo = () => {
+                    if (history.value.length === 0) return;
+                    const state = JSON.parse(history.value.pop());
+                    nodes.value = state.nodes;
+                    edges.value = state.edges;
+                    selectedNode.value = null;
+                    recalcAndRender();
+                };
+
+                const recalcAndRender = () => {
+                    calculateFlows();
+                    applyDuctSizes();
+                    saveToLocalStorage();
+                    render();
+                };
+
+                const calculateFlows = () => {
+                    edges.value.forEach((e) => (e.flow = 0));
+
+                    const getReachableCFM = (
+                        startNode,
+                        visited = new Set(),
+                    ) => {
+                        if (visited.has(startNode)) return 0;
+                        visited.add(startNode);
+
+                        let total =
+                            nodes.value[startNode].type === "terminal"
+                                ? nodes.value[startNode].cfm
+                                : 0;
+
+                        edges.value
+                            .filter((e) => e.from === startNode)
+                            .forEach((e) => {
+                                const down = getReachableCFM(e.to, visited);
+                                e.flow = down;
+                            });
+
+                        return (
+                            total +
+                            edges.value
+                                .filter((e) => e.from === startNode)
+                                .reduce((acc, e) => acc + e.flow, 0)
+                        );
+                    };
+
+                    const roots = nodes.value
+                        .map((_, i) => i)
+                        .filter(
+                            (i) => !edges.value.some((e) => e.to === i),
+                        );
+                    roots.forEach((r) => getReachableCFM(r));
+                };
+
+                // --- INTERACTION HANDLERS ---
+
+                const resetView = () => {
+                    transform.value = { scale: 1, offsetX: 0, offsetY: 0 };
+                    render();
+                };
+
+                const handleWheel = (e) => {
+                    const zoomIntensity = 0.1;
+                    const direction = e.deltaY > 0 ? -1 : 1;
+                    const factor = 1 + direction * zoomIntensity;
+
+                    // Zoom point (mouse pos)
+                    const rect = canvasRef.value.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+
+                    // World before zoom
+                    const wx =
+                        (mouseX - transform.value.offsetX) /
+                        transform.value.scale;
+                    const wy =
+                        (mouseY - transform.value.offsetY) /
+                        transform.value.scale;
+
+                    // Apply zoom
+                    let newScale = transform.value.scale * factor;
+                    newScale = Math.max(0.1, Math.min(newScale, 5)); // Limits
+
+                    transform.value.scale = newScale;
+
+                    // Adjust offset to keep mouse world point stable
+                    transform.value.offsetX = mouseX - wx * newScale;
+                    transform.value.offsetY = mouseY - wy * newScale;
+
+                    render();
+                };
+
+                const updateMouse = (e) => {
+                    const rect = canvasRef.value.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    mousePos.value = { x: mx, y: my };
+
+                    // Current World Coord (for drawing preview etc)
+                    const w = screenToWorld(mx, my);
+                    mouseWorld.value = w;
+
+                    // PANNING
+                    if (isPanning.value) {
+                        const dx = mx - lastMouse.value.x;
+                        const dy = my - lastMouse.value.y;
+                        transform.value.offsetX += dx;
+                        transform.value.offsetY += dy;
+                        lastMouse.value = { x: mx, y: my };
+                        render();
+                        return;
+                    }
+
+                    // DRAGGING NODE
+                    if (draggingNode.value !== null) {
+                        // Snap logic
+                        let tx = w.x;
+                        let ty = w.y;
+
+                        if (snapToGrid.value) {
+                            tx = Math.round(tx / 20) * 20;
+                            ty = Math.round(ty / 20) * 20;
+                        }
+
+                        nodes.value[draggingNode.value].x = tx;
+                        nodes.value[draggingNode.value].y = ty;
+
+                        recalcAndRender();
+                        return;
+                    }
+
+                    // HOVER CHECKS
+                    let minDist = 20 / transform.value.scale;
+                    let foundIdx = null;
+                    edges.value.forEach((edge, idx) => {
+                        const n1 = nodes.value[edge.from];
+                        const n2 = nodes.value[edge.to];
+                        const d = getDistToEdge(
+                            w.x,
+                            w.y,
+                            n1.x,
+                            n1.y,
+                            n2.x,
+                            n2.y,
+                        );
+                        if (d < minDist) {
+                            minDist = d;
+                            foundIdx = idx;
+                        }
+                    });
+                    hoveredEdge.value = foundIdx;
+                    render();
+                };
+
+                const handleCanvasClick = (e) => {
+                    // Actual mousedown
+                    const rect = canvasRef.value.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+                    lastMouse.value = { x: mx, y: my };
+
+                    // Pan Check (Middle Click or Alt)
+                    if (e.button === 1 || e.altKey) {
+                        isPanning.value = true;
+                        return;
+                    }
+
+                    saveHistory();
+                    const w = screenToWorld(mx, my);
+                    let finalX = w.x;
+                    let finalY = w.y;
+
+                    // Apply Snap on Click (for new Nodes)
+                    if (
+                        snapToGrid.value &&
+                        (mode.value === "terminal" ||
+                            mode.value === "branch")
+                    ) {
+                        finalX = Math.round(finalX / 20) * 20;
+                        finalY = Math.round(finalY / 20) * 20;
+                    }
+
+                    // Apply Snap on Draw Duct (endpoint) - Maybe? User didn't request explicitly but good UX.
+                    // Let's stick to Node Move/Place as requested.
+
+                    // Hit test nodes (radius constant 25 for easier selection)
+                    const clickedNodeIdx = nodes.value.findIndex(
+                        (n) => Math.hypot(n.x - w.x, n.y - w.y) < 25,
+                    );
+
+                    // MOVE TOOL
+                    if (mode.value === "move") {
+                        if (clickedNodeIdx !== -1) {
+                            draggingNode.value = clickedNodeIdx;
+                            selectedNode.value = clickedNodeIdx;
+                            selectedEdge.value = null;
+                        }
+                    }
+
+                    // SELECT MODE
+                    else if (mode.value === "select") {
+                        if (clickedNodeIdx !== -1) {
+                            selectedNode.value = clickedNodeIdx;
+                            selectedEdge.value = null;
+                        } else {
+                            // Check if clicked near edge
+                            let minDist = 10 / transform.value.scale;
+                            let foundEdgeIdx = -1;
+
+                            edges.value.forEach((edge, idx) => {
+                                const n1 = nodes.value[edge.from];
+                                const n2 = nodes.value[edge.to];
+                                const d = getDistToEdge(
+                                    w.x,
+                                    w.y,
+                                    n1.x,
+                                    n1.y,
+                                    n2.x,
+                                    n2.y,
+                                );
+                                if (d < minDist) {
+                                    minDist = d;
+                                    foundEdgeIdx = idx;
+                                }
+                            });
+
+                            if (foundEdgeIdx !== -1) {
+                                selectedEdge.value = foundEdgeIdx;
+                                selectedNode.value = null;
+                            } else {
+                                selectedEdge.value = null;
+                                selectedNode.value = null;
+                            }
+                        }
+                    }
+
+                    // ADD TERMINAL
+                    else if (mode.value === "terminal") {
+                        if (clickedNodeIdx === -1) {
+                            nodes.value.push({
+                                x: finalX,
+                                y: finalY,
+                                cfm: defaultCfm.value,
+                                type: "terminal",
+                            });
+                            selectedNode.value = nodes.value.length - 1;
+                            selectedEdge.value = null;
+                        }
+                    }
+
+                    // ADD JUNCTION
+                    else if (mode.value === "branch") {
+                        if (clickedNodeIdx === -1) {
+                            nodes.value.push({
+                                x: finalX,
+                                y: finalY,
+                                cfm: 0,
+                                type: "branch",
+                            });
+                            selectedNode.value = nodes.value.length - 1;
+                            selectedEdge.value = null;
+                        }
+                    }
+
+                    // DRAW DUCT
+                    else if (mode.value === "duct") {
+                        if (clickedNodeIdx !== -1) {
+                            if (
+                                selectedNode.value !== null &&
+                                nodes.value[selectedNode.value]
+                            ) {
+                                if (selectedNode.value !== clickedNodeIdx) {
+                                    const exists = edges.value.some(
+                                        (e) =>
+                                            (e.from ===
+                                                selectedNode.value &&
+                                                e.to === clickedNodeIdx) ||
+                                            (e.to === selectedNode.value &&
+                                                e.from === clickedNodeIdx),
+                                    );
+                                    if (!exists) {
+                                        edges.value.push({
+                                            from: selectedNode.value,
+                                            to: clickedNodeIdx,
+                                            flow: 0,
+                                        });
+                                        selectedNode.value = clickedNodeIdx;
+                                        selectedEdge.value = null;
+                                    }
+                                }
+                            } else {
+                                selectedNode.value = clickedNodeIdx;
+                                selectedEdge.value = null;
+                            }
+                        }
+                    }
+
+                    // FLIP
+                    else if (
+                        mode.value === "flip" &&
+                        hoveredEdge.value !== null
+                    ) {
+                        const e = edges.value[hoveredEdge.value];
+                        [e.from, e.to] = [e.to, e.from];
+                    }
+
+                    recalcAndRender();
+                };
+
+                const handleMouseUp = () => {
+                    isPanning.value = false;
+                    draggingNode.value = null;
+                };
+
+                const render = () => {
+                    if (!canvasRef.value) return;
+                    const ctx = canvasRef.value.getContext("2d");
+                    ctx.clearRect(
+                        0,
+                        0,
+                        canvasWidth.value,
+                        canvasHeight.value,
+                    );
+
+                    ctx.save();
+                    // Apply Transformations
+                    ctx.translate(
+                        transform.value.offsetX,
+                        transform.value.offsetY,
+                    );
+                    ctx.scale(transform.value.scale, transform.value.scale);
+
+                    // Grid Drawing (Infinite-ish)
+                    // We need to calculate visible world bounds
+                    const tl = screenToWorld(0, 0);
+                    const br = screenToWorld(
+                        canvasWidth.value,
+                        canvasHeight.value,
+                    );
+
+                    ctx.strokeStyle = "#1a1614";
+                    ctx.lineWidth = 1 / transform.value.scale; // Keep line width constant on screen
+
+                    const gridSize = 40;
+                    const startX = Math.floor(tl.x / gridSize) * gridSize;
+                    const endX = Math.ceil(br.x / gridSize) * gridSize;
+                    const startY = Math.floor(tl.y / gridSize) * gridSize;
+                    const endY = Math.ceil(br.y / gridSize) * gridSize;
+
+                    for (let i = startX; i <= endX; i += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(i, startY);
+                        ctx.lineTo(i, endY);
+                        ctx.stroke();
+                    }
+                    for (let i = startY; i <= endY; i += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(startX, i);
+                        ctx.lineTo(endX, i);
+                        ctx.stroke();
+                    }
+
+                    // Draw Arrow Helper
+                    const drawArrow = (ctx, x1, y1, x2, y2) => {
+                        const angle = Math.atan2(y2 - y1, x2 - x1);
+                        const mx = (x1 + x2) / 2;
+                        const my = (y1 + y2) / 2;
+
+                        ctx.save();
+                        ctx.translate(mx, my);
+                        ctx.rotate(angle);
+
+                        const headLen = 6 / transform.value.scale; // Scale arrow head? No, usually icons scale with zoom or stay fixed?
+                        // Previous code used constant 6. If we zoom in, it gets bigger. Which is standard canvas behavior.
+                        // Let's keep it standard.
+
+                        ctx.beginPath();
+                        ctx.moveTo(-6, -3);
+                        ctx.lineTo(6, 0);
+                        ctx.lineTo(-6, 3);
+                        ctx.fillStyle = "#ff8c42";
+                        ctx.fill();
+
+                        ctx.restore();
+                    };
+
+                    // Edges (Ducts)
+                    edges.value.forEach((e, idx) => {
+                        const n1 = nodes.value[e.from];
+                        const n2 = nodes.value[e.to];
+                        const isHovered =
+                            hoveredEdge.value === idx &&
+                            mode.value === "flip";
+
+                        ctx.beginPath();
+                        ctx.moveTo(n1.x, n1.y);
+                        ctx.lineTo(n2.x, n2.y);
+                        ctx.lineTo(n2.x, n2.y);
+                        const isSelected = selectedEdge.value === idx;
+                        ctx.strokeStyle =
+                            isHovered || isSelected
+                                ? isSelected
+                                    ? "#sunset-glow"
+                                    : "#ffffff"
+                                : "#2d2621";
+                        if (isSelected) {
+                            ctx.strokeStyle = "#ff8c42"; // Selected Color
+                            ctx.shadowColor = "#ff8c42";
+                            ctx.shadowBlur = 10;
+                        } else {
+                            ctx.shadowBlur = 0;
+                        }
+
+                        ctx.lineWidth = Math.max(
+                            6,
+                            Math.min(20, 6 + e.flow / 200),
+                        );
+                        ctx.lineCap = "round";
+                        ctx.stroke();
+
+                        drawArrow(ctx, n1.x, n1.y, n2.x, n2.y);
+
+                        if (e.flow > 0) {
+                            const mx = (n1.x + n2.x) / 2;
+                            const my = (n1.y + n2.y) / 2;
+                            ctx.fillStyle = "#ff8c42";
+                            ctx.font = `bold 10px "Roboto Mono"`;
+                            ctx.textAlign = "center";
+                            ctx.fillText(`${e.flow} CFM`, mx, my - 12);
+
+                            // Show duct size if available (below arrow)
+                            if (e.ductSize) {
+                                ctx.fillStyle = "#fff";
+                                ctx.font = `bold 11px "Roboto Mono"`;
+                                ctx.fillText(e.ductSize, mx, my + 16);
+                            }
+                        }
+                    });
+
+                    // Preview Line (Duct Draw)
+                    if (
+                        mode.value === "duct" &&
+                        selectedNode.value !== null &&
+                        nodes.value[selectedNode.value]
+                    ) {
+                        const sn = nodes.value[selectedNode.value];
+
+                        // MouseWorld is updated in updateMouse
+                        let tx = mouseWorld.value.x;
+                        let ty = mouseWorld.value.y;
+
+                        if (snapToGrid.value) {
+                            tx = Math.round(tx / 20) * 20;
+                            ty = Math.round(ty / 20) * 20;
+                        }
+
+                        ctx.beginPath();
+                        ctx.moveTo(sn.x, sn.y);
+                        ctx.lineTo(tx, ty);
+                        ctx.strokeStyle = "#ff8c42";
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+
+                    // Nodes
+                    nodes.value.forEach((n, i) => {
+                        const isSelected = i === selectedNode.value;
+
+                        if (n.type === "terminal") {
+                            // Symbol: Box with X
+                            const size = 12;
+                            ctx.save();
+                            ctx.translate(n.x, n.y);
+
+                            // Fill background
+                            ctx.fillStyle = "#0d0d0d";
+                            ctx.fillRect(-size, -size, size * 2, size * 2);
+
+                            // Stroke
+                            ctx.strokeStyle = isSelected
+                                ? "#fff"
+                                : "#ff8c42";
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(
+                                -size,
+                                -size,
+                                size * 2,
+                                size * 2,
+                            );
+
+                            // X
+                            ctx.beginPath();
+                            ctx.moveTo(-size, -size);
+                            ctx.lineTo(size, size);
+                            ctx.moveTo(size, -size);
+                            ctx.lineTo(-size, size);
+                            ctx.stroke();
+
+                            ctx.restore();
+
+                            // Labels
+                            ctx.textAlign = "center";
+                            if (n.cfm) {
+                                ctx.fillStyle = isSelected
+                                    ? "#fff"
+                                    : "#6b5c54";
+                                ctx.font = '9px "Inter"';
+                                ctx.fillText(
+                                    `${n.cfm} CFM`,
+                                    n.x,
+                                    n.y + size + 12,
+                                );
+                            }
+                        } else {
+                            // Junction
+                            ctx.beginPath();
+                            ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
+                            ctx.fillStyle = isSelected ? "#fff" : "#4a3728";
+                            ctx.fill();
+                            ctx.strokeStyle = isSelected
+                                ? "#fff"
+                                : "#4a3728";
+                            ctx.stroke();
+                        }
+                    });
+
+                    ctx.restore(); // Restore Identity for any UI overlays?
+                    // Currently no screen-space UI overlays in canvas path.
+                };
+
+                const clearAll = () => {
+                    nodes.value = [];
+                    edges.value = [];
+                    selectedNode.value = null;
+                    render();
+                };
+
+                onMounted(() => {
+                    // Initial canvas sizing
+                    const container = canvasRef.value.parentElement;
+                    canvasWidth.value = container.clientWidth;
+                    canvasHeight.value = container.clientHeight;
+
+                    // Resize observer
+                    new ResizeObserver(() => {
+                        canvasWidth.value = container.clientWidth;
+                        canvasHeight.value = container.clientHeight;
+                        render();
+                    }).observe(container);
+
+                    window.addEventListener("keydown", handleKeydown);
+
+                    loadFromLocalStorage();
+                    loadLoadSheetFromStorage();
+                    render();
+                });
+
+                onUnmounted(() => {
+                    window.removeEventListener("keydown", handleKeydown);
+                });
+
+                return {
+                    canvasRef,
+                    mode,
+                    tools,
+                    setTool,
+                    nodes,
+                    edges,
+                    selectedNode,
+                    selectedEdge,
+                    history,
+                    defaultCfm,
+                    undo,
+                    clearAll,
+                    recalcAndRender,
+                    updateMouse,
+                    handleCanvasClick,
+                    canvasWidth,
+                    canvasHeight,
+                    handleMouseUp,
+                    handleWheel,
+                    resetView,
+                    snapToGrid,
+                    mouseWorld,
+                    draggingNode,
+                    deleteSelected,
+                    exportJSON,
+                    importJSON,
+                    triggerImport,
+                    loadSheet,
+                    loadSheetColumns,
+                    loadSheetStatus,
+                    triggerLoadSheetUpload,
+                    handleLoadSheetUpload,
+                    clearLoadSheet,
+                    showLoadSheetDialog,
+                    editingEntry,
+                    editCfm,
+                    editSize,
+                    openAddEntry,
+                    openEditEntry,
+                    saveEntry,
+                    deleteEntry,
+                };
+            },
+        }).mount("#app");
+    </script>
 </body>
 
 </html>
