@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -99,6 +99,9 @@
                     <path v-if="t.id === 'flip'" d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
                     <path v-if="t.id === 'flip'" d="M16 6l-4-4-4 4" />
                     <path v-if="t.id === 'flip'" d="M12 2v13" />
+                    <rect v-if="t.id === 'image'" x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle v-if="t.id === 'image'" cx="8.5" cy="8.5" r="1.5" />
+                    <polyline v-if="t.id === 'image'" points="21 15 16 10 5 21" />
                 </svg>
             </button>
         </div>
@@ -120,7 +123,7 @@
                     </button>
                     <label class="flex items-center gap-2 cursor-pointer group">
                         <div class="relative">
-                            <input type="checkbox" v-model="snapToGrid" class="peer sr-only" />
+                            <input type="checkbox" v-model="snapToGrid" class="peer sr-only">
                             <div
                                 class="w-8 h-4 bg-[#1a1614] rounded-full peer-checked:bg-sunset-glow/20 transition-all">
                             </div>
@@ -148,24 +151,29 @@
 
                 <div
                     class="absolute bottom-6 left-6 text-[10px] text-text-muted tracking-widest uppercase opacity-50 pointer-events-none font-mono">
-                    {{ mode }} mode |
-                    <span v-if="mouseWorld">W: {{ Math.round(mouseWorld.x) }}, {{
-                        Math.round(mouseWorld.y) }}</span>
-                    | Drag: {{ draggingNode !== null ? draggingNode : 'None'
-                    }}
+                    {{ mode }} mode | <span v-if="mouseWorld">W: {{ Math.round(mouseWorld.x) }}, {{
+                        Math.round(mouseWorld.y)
+                        }}</span> | Drag: {{ draggingNode !== null ? draggingNode : 'None' }}
                 </div>
             </div>
 
             <!-- Properties Sidebar -->
             <div class="w-[280px] bg-[#0d0d0d] border-l border-border-low flex flex-col z-20">
                 <div class="p-6 border-b border-border-low">
-                    <h2 class="text-[10px] text-text-muted uppercase tracking-[0.2em] mb-1">
-                        Properties Panel
-                    </h2>
-                    <div v-if="selectedNode !== null && nodes[selectedNode]" class="mb-4">
+                    <div v-if="selectedNodes.size > 0 || selectedEdges.size > 0" class="mb-4">
                         <div class="text-sunset-glow text-sm font-mono mb-2">
-                            {{ nodes[selectedNode].type === 'terminal' ?
-                            'Terminal' : 'Junction' }} #{{ selectedNode }}
+                            <span v-if="selectedNodes.size === 1">
+                                {{ nodes[Array.from(selectedNodes)[0]].type === 'terminal' ? 'Terminal' : 'Junction' }}
+                                #{{
+                                Array.from(selectedNodes)[0] }}
+                            </span>
+                            <span v-else-if="selectedNodes.size > 1">
+                                {{ selectedNodes.size }} Nodes Selected
+                            </span>
+                            <span v-if="selectedEdges.size > 0">
+                                <span v-if="selectedNodes.size > 0">, </span>
+                                {{ selectedEdges.size }} Ducts Selected
+                            </span>
                         </div>
                         <button @click="deleteSelected"
                             class="w-full py-1 px-2 mb-2 text-[10px] uppercase tracking-wider border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-all rounded-sm flex items-center justify-center gap-2">
@@ -176,7 +184,7 @@
                                     d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
                                 </path>
                             </svg>
-                            Delete Node
+                            Delete Selection
                         </button>
                     </div>
                     <div v-else class="text-text-muted italic text-sm">
@@ -185,70 +193,154 @@
                 </div>
 
                 <div class="p-6 flex-1 overflow-y-auto">
-                    <div v-if="selectedNode !== null && nodes[selectedNode]" class="space-y-6">
+                    <div v-if="singleSelectedNode !== null && nodes[singleSelectedNode]" class="space-y-6">
                         <!-- Terminal Properties -->
-                        <div v-if="nodes[selectedNode].type === 'terminal'" class="space-y-3">
+                        <div v-if="nodes[singleSelectedNode].type === 'terminal'" class="space-y-3">
                             <div>
                                 <label class="text-[10px] text-text-muted uppercase tracking-widest block">Airflow
                                     (CFM)</label>
-                                <input type="number" v-model.number="nodes[selectedNode].cfm" @input="recalcAndRender"
+                                <input type="number" v-model.number="nodes[singleSelectedNode].cfm"
+                                    @input="recalcAndRender"
                                     class="w-full bg-[#12100e] border border-border-med p-3 text-text-main outline-none text-right font-mono focus:border-sunset-glow focus:shadow-[0_0_15px_rgba(255,140,66,0.1)] transition-all" />
                             </div>
                         </div>
 
-                        <div v-if="nodes[selectedNode].type === 'branch'" class="text-xs text-text-muted">
-                            Junctions do not have modifiable properties.
-                            Connect ducts to route flow.
+                        <div v-if="nodes[singleSelectedNode].type === 'branch'" class="text-xs text-text-muted">
+                            Junctions do not have modifiable properties. Connect ducts to
+                            route flow.
                         </div>
                     </div>
 
                     <!-- Edge Properties -->
-                    <div v-else-if="selectedEdge !== null && edges[selectedEdge]" class="space-y-6">
+                    <div v-else-if="singleSelectedEdge !== null && edges[singleSelectedEdge]" class="space-y-6">
                         <div class="text-sunset-glow text-sm font-mono mb-2">
-                            Duct Segment #{{ selectedEdge }}
+                            Duct Segment #{{ singleSelectedEdge }}
                         </div>
 
                         <div>
                             <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Flow
                                 Rate</label>
-                            <div class="text-lg font-mono text-text-main">
-                                {{ edges[selectedEdge].flow }} CFM
-                            </div>
+                            <div class="text-lg font-mono text-text-main">{{ edges[singleSelectedEdge].flow }} CFM</div>
                         </div>
 
                         <div class="border-t border-border-med pt-4">
                             <label class="flex items-center gap-2 cursor-pointer mb-4">
-                                <input type="checkbox" v-model="edges[selectedEdge].isCustom" @change="() => {
+                                <input type="checkbox" v-model="edges[singleSelectedEdge].isCustom" @change="() => {
                       // Init dimensions if enabling
-                      if(edges[selectedEdge].isCustom && edges[selectedEdge].ductSize) {
-                         const parts = edges[selectedEdge].ductSize.split('x');
+                      const idx = singleSelectedEdge;
+                      if(edges[idx].isCustom && edges[idx].ductSize) {
+                         const parts = edges[idx].ductSize.split('x');
                          if(parts.length === 2) {
-                           edges[selectedEdge].customWidth = parts[0];
-                           edges[selectedEdge].customHeight = parts[1];
+                           edges[idx].customWidth = parts[0];
+                           edges[idx].customHeight = parts[1];
                          }
                       }
                       recalcAndRender();
-                  }" class="accent-sunset-glow" />
+                  }" class="accent-sunset-glow">
                                 <span class="text-[10px] text-text-muted uppercase tracking-widest">Manual Size
                                     Override</span>
                             </label>
 
-                            <div v-if="edges[selectedEdge].isCustom" class="grid grid-cols-2 gap-2">
+                            <div v-if="edges[singleSelectedEdge].isCustom" class="space-y-3 mt-3">
+                                <!-- Head Loss Input for Calculation -->
                                 <div>
-                                    <label class="text-[9px] text-text-muted block mb-1">Width</label>
-                                    <input type="text" v-model="edges[selectedEdge].customWidth" @input="() => {
-                           edges[selectedEdge].customSize = `${edges[selectedEdge].customWidth||0}x${edges[selectedEdge].customHeight||0}`;
-                           recalcAndRender();
-                        }" class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                                    <label class="text-[9px] text-text-muted block mb-1">Target Head Loss
+                                        (in.WC/100ft)</label>
+                                    <input type="number" v-model.number="targetHeadLoss" step="0.01"
+                                        class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none text-right">
                                 </div>
-                                <div>
-                                    <label class="text-[9px] text-text-muted block mb-1">Height</label>
-                                    <input type="text" v-model="edges[selectedEdge].customHeight" @input="() => {
-                           edges[selectedEdge].customSize = `${edges[selectedEdge].customWidth||0}x${edges[selectedEdge].customHeight||0}`;
-                           recalcAndRender();
-                        }" class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-[9px] text-text-muted block mb-1">Width</label>
+                                        <div class="flex flex-col gap-1">
+                                            <input type="number" v-model="edges[singleSelectedEdge].customWidth" @input="() => {
+                                 const idx = singleSelectedEdge;
+                                 edges[idx].customSize = `${edges[idx].customWidth||0}x${edges[idx].customHeight||0}`;
+                                 recalcAndRender();
+                              }" class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none">
+                                            <button @click="calculateDuctDimension(singleSelectedEdge, 'width')"
+                                                title="Calculate Width from Height"
+                                                class="text-[9px] uppercase tracking-wider bg-[#1a1614] hover:bg-[#2d2621] text-sunset-glow py-1 px-2 rounded-sm border border-border-med transition-colors">
+                                                Suggest
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] text-text-muted block mb-1">Height</label>
+                                        <div class="flex flex-col gap-1">
+                                            <input type="number" v-model="edges[singleSelectedEdge].customHeight"
+                                                @input="() => {
+                                 const idx = singleSelectedEdge;
+                                 edges[idx].customSize = `${edges[idx].customWidth||0}x${edges[idx].customHeight||0}`;
+                                 recalcAndRender();
+                              }" class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none">
+                                            <button @click="calculateDuctDimension(singleSelectedEdge, 'height')"
+                                                title="Calculate Height from Width"
+                                                class="text-[9px] uppercase tracking-wider bg-[#1a1614] hover:bg-[#2d2621] text-sunset-glow py-1 px-2 rounded-sm border border-border-med transition-colors">
+                                                Suggest
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Background Image Properties -->
+                    <div v-else-if="mode === 'image'" class="space-y-6">
+                        <h3 class="text-sunset-glow text-sm font-mono mb-2">Background Image</h3>
+
+                        <div v-if="!backgroundImage">
+                            <p class="text-xs text-text-muted mb-4">No image loaded.</p>
+                            <button @click="triggerImageUpload"
+                                class="w-full py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-sunset-glow text-sunset-glow hover:bg-sunset-glow/10 transition-all rounded-sm">
+                                Upload Image
+                            </button>
+                            <input type="file" id="bgImageInput" accept="image/*" class="hidden"
+                                @change="handleImageUpload">
+                        </div>
+
+                        <div v-else class="space-y-4">
+                            <div>
+                                <label
+                                    class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Opacity</label>
+                                <input type="range" min="0" max="1" step="0.05" v-model.number="backgroundImage.opacity"
+                                    @input="recalcAndRender" class="w-full accent-sunset-glow">
+                                <div class="text-right text-xs font-mono text-text-muted">{{
+                                    Math.round(backgroundImage.opacity * 100)
+                                    }}%</div>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Scale</label>
+                                <input type="number" step="0.1" v-model.number="backgroundImage.scale"
+                                    @input="recalcAndRender"
+                                    class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[9px] text-text-muted block mb-1">X Pos</label>
+                                    <input type="number" v-model.number="backgroundImage.x" @input="recalcAndRender"
+                                        class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-text-muted block mb-1">Y Pos</label>
+                                    <input type="number" v-model.number="backgroundImage.y" @input="recalcAndRender"
+                                        class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none">
+                                </div>
+                            </div>
+
+                            <div class="pt-4 border-t border-border-med">
+                                <button @click="deleteImage"
+                                    class="w-full py-2 text-[10px] uppercase tracking-widest border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-all rounded-sm">
+                                    Remove Image
+                                </button>
+                            </div>
+
+                            <!-- Keep hidden input for re-upload if needed, or just let them delete first -->
                         </div>
                     </div>
 
@@ -261,8 +353,9 @@
                             </svg>
                         </div>
                         <p class="text-xs text-text-muted">
-                            Select a terminal to edits its CFM value.<br />
-                            Select a duct to override size.
+                            Select a terminal to edits its CFM value.<br>
+                            Select a duct to override size.<br>
+                            Shift+Click to select multiple.
                         </p>
                     </div>
                 </div>
@@ -304,25 +397,23 @@
                             </svg>
                             Load
                         </button>
-                        <input type="file" id="importFile" accept=".json" class="hidden" @change="importJSON" />
+                        <input type="file" id="importFile" accept=".json" class="hidden" @change="importJSON">
                     </div>
 
                     <!-- Load Sheet Section -->
                     <div class="mt-4 pt-4 border-t border-border-low space-y-3">
-                        <h3 class="text-[10px] text-text-muted uppercase tracking-widest">
-                            Duct Size Schedule
-                        </h3>
+                        <h3 class="text-[10px] text-text-muted uppercase tracking-widest">Duct Size Schedule</h3>
 
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="text-[9px] text-text-muted block mb-1">CFM Column</label>
                                 <input type="text" v-model="loadSheetColumns.cfmCol"
-                                    class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all" />
+                                    class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all">
                             </div>
                             <div>
                                 <label class="text-[9px] text-text-muted block mb-1">Size Column</label>
                                 <input type="text" v-model="loadSheetColumns.sizeCol"
-                                    class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all" />
+                                    class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all">
                             </div>
                         </div>
 
@@ -343,7 +434,7 @@
                                 Clear
                             </button>
                             <input type="file" id="loadSheetFile" accept=".csv" class="hidden"
-                                @change="handleLoadSheetUpload" />
+                                @change="handleLoadSheetUpload">
                         </div>
 
                         <div v-if="loadSheetStatus" class="text-[10px] font-mono"
@@ -371,9 +462,7 @@
             <div
                 class="bg-[#0d0d0d] border border-border-low rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
                 <div class="p-4 border-b border-border-low flex justify-between items-center bg-[#0a0a0a]">
-                    <h2 class="text-xs text-text-muted uppercase tracking-widest font-bold">
-                        Duct Size Schedule
-                    </h2>
+                    <h2 class="text-xs text-text-muted uppercase tracking-widest font-bold">Duct Size Schedule</h2>
                     <button @click="showLoadSheetDialog = false"
                         class="text-text-muted hover:text-white transition-colors">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -430,12 +519,12 @@
                         <div>
                             <label class="text-[10px] text-text-muted uppercase block mb-1">CFM Value</label>
                             <input type="text" v-model="editCfm" placeholder="e.g. 1,000"
-                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main outline-none font-mono text-sm focus:border-sunset-glow transition-all" />
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main outline-none font-mono text-sm focus:border-sunset-glow transition-all">
                         </div>
                         <div>
                             <label class="text-[10px] text-text-muted uppercase block mb-1">Duct Size</label>
                             <input type="text" v-model="editSize" placeholder="e.g. 12x8"
-                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main outline-none font-mono text-sm focus:border-sunset-glow transition-all" />
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main outline-none font-mono text-sm focus:border-sunset-glow transition-all">
                         </div>
                     </div>
                     <div class="flex gap-2">
@@ -464,8 +553,40 @@
                 const nodes = ref([]);
                 const edges = ref([]);
                 const history = ref([]);
-                const selectedNode = ref(null);
-                const selectedEdge = ref(null); // Index of selected edge
+
+                // Multi-selection State
+                const selectedNodes = ref(new Set());
+                const selectedEdges = ref(new Set());
+                const dragStartPositions = ref(new Map());
+                const dragStartMouse = ref({ x: 0, y: 0 });
+
+                // Background Image State
+                const backgroundImage = ref(null);
+                // Structure: { src: base64, x: 0, y: 0, scale: 1, opacity: 0.5, width: 0, height: 0, aspectRatio: 1, element: HTMLImageElement }
+                const isImageSelected = ref(false);
+                const isDraggingImage = ref(false);
+
+                // Computed helpers for property panel compatibility
+                const singleSelectedNode = computed(() => {
+                    if (selectedNodes.value.size === 1) {
+                        return Array.from(selectedNodes.value)[0];
+                    }
+                    return null;
+                });
+
+                const singleSelectedEdge = computed(() => {
+                    if (selectedEdges.value.size === 1) {
+                        return Array.from(selectedEdges.value)[0];
+                    }
+                    return null;
+                });
+
+                const selectionBox = ref({ startX: 0, startY: 0, endX: 0, endY: 0, active: false });
+                const isDraggingSelection = ref(false);
+
+                const selectedNode = ref(null); // DEPRECATED: Kept briefly to minimize diff noise during transition, but will be removed.
+                const selectedEdge = ref(null); // DEPRECATED
+
                 const hoveredEdge = ref(null);
                 const mousePos = ref({ x: 0, y: 0 }); // Screen coordinates
                 const mouseWorld = ref({ x: 0, y: 0 }); // World coordinates
@@ -482,11 +603,8 @@
 
                 // Load Sheet State
                 const loadSheet = ref([]); // Array of { cfm: number, ductSize: string }, sorted by cfm
-                const loadSheetColumns = ref({
-                    cfmCol: "CFM",
-                    sizeCol: "Size",
-                });
-                const loadSheetStatus = ref(""); // Status message for UI
+                const loadSheetColumns = ref({ cfmCol: 'CFM', sizeCol: 'Size' });
+                const loadSheetStatus = ref(''); // Status message for UI
 
                 const tools = [
                     { id: "select", label: "Select / Edit" },
@@ -495,6 +613,7 @@
                     { id: "branch", label: "Add Junction" },
                     { id: "duct", label: "Draw Duct" },
                     { id: "flip", label: "Flip Flow" },
+                    { id: "image", label: "Image Mode" },
                 ];
 
                 const setTool = (id) => {
@@ -507,26 +626,40 @@
                 };
 
                 const deleteSelected = () => {
-                    if (selectedNode.value === null) return;
+                    if (selectedNodes.value.size === 0 && selectedEdges.value.size === 0) return;
 
                     saveHistory();
-                    const idx = selectedNode.value;
 
-                    // Remove connected edges
-                    edges.value = edges.value.filter(
-                        (e) => e.from !== idx && e.to !== idx,
-                    );
+                    // Convert sets to arrays for processing
+                    const nodesToDelete = Array.from(selectedNodes.value).sort((a, b) => b - a);
 
-                    // Remove node
-                    nodes.value.splice(idx, 1);
+                    // Remove edges connected to deleted nodes first
+                    const newEdges = [];
+                    edges.value.forEach((e, idx) => {
+                        const explicitDelete = selectedEdges.value.has(idx);
+                        const nodeDelete = nodesToDelete.includes(e.from) || nodesToDelete.includes(e.to);
 
-                    // Fix indices in edges
-                    edges.value.forEach((e) => {
-                        if (e.from > idx) e.from--;
-                        if (e.to > idx) e.to--;
+                        if (!explicitDelete && !nodeDelete) {
+                            newEdges.push(e);
+                        }
                     });
 
-                    selectedNode.value = null;
+                    edges.value = newEdges;
+
+                    // Remove nodes
+                    // We must remove from highest index to lowest to avoid shifting issues
+                    nodesToDelete.forEach(idx => {
+                        nodes.value.splice(idx, 1);
+                        // Adjust edge indices for remaining edges
+                        edges.value.forEach(e => {
+                            if (e.from > idx) e.from--;
+                            if (e.to > idx) e.to--;
+                        });
+                    });
+
+                    // Clear Selection
+                    selectedNodes.value.clear();
+                    selectedEdges.value.clear();
                     recalcAndRender();
                 };
 
@@ -535,12 +668,11 @@
                         if (draggingNode.value !== null) {
                             draggingNode.value = null;
                         }
-                        if (selectedNode.value !== null) {
-                            selectedNode.value = null;
-                            render();
-                        }
+                        selectedNodes.value.clear();
+                        selectedEdges.value.clear();
+                        render();
                     }
-                    if (e.key === "Delete" || e.key === "Backspace") {
+                    if (e.key === "Delete") {
                         deleteSelected();
                     }
                 };
@@ -551,11 +683,9 @@
                         nodes: nodes.value,
                         edges: edges.value,
                         version: 1,
+                        backgroundImage: backgroundImage.value ? { ...backgroundImage.value, element: undefined } : null
                     };
-                    localStorage.setItem(
-                        "ariflow_data",
-                        JSON.stringify(data),
-                    );
+                    localStorage.setItem("ariflow_data", JSON.stringify(data));
                 };
 
                 const loadFromLocalStorage = () => {
@@ -566,6 +696,13 @@
                             if (data.nodes && data.edges) {
                                 nodes.value = data.nodes;
                                 edges.value = data.edges;
+
+                                if (data.backgroundImage) {
+                                    backgroundImage.value = data.backgroundImage;
+                                    const img = new Image();
+                                    img.onload = () => { if (backgroundImage.value) backgroundImage.value.element = img; recalcAndRender(); };
+                                    img.src = data.backgroundImage.src;
+                                }
                             }
                         } catch (e) {
                             console.error("Failed to load local data", e);
@@ -581,10 +718,9 @@
                         loadSheetColumns: loadSheetColumns.value,
                         version: 1,
                         timestamp: new Date().toISOString(),
+                        backgroundImage: backgroundImage.value ? { ...backgroundImage.value, element: undefined } : null
                     };
-                    const blob = new Blob([JSON.stringify(data, null, 2)], {
-                        type: "application/json",
-                    });
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url;
@@ -609,14 +745,22 @@
                                 if (data.loadSheet) {
                                     loadSheet.value = data.loadSheet;
                                     if (data.loadSheetColumns) {
-                                        loadSheetColumns.value =
-                                            data.loadSheetColumns;
+                                        loadSheetColumns.value = data.loadSheetColumns;
                                     }
+                                    loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
                                     loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
                                     saveLoadSheetToStorage();
                                 }
 
-                                selectedNode.value = null;
+                                if (data.backgroundImage) {
+                                    backgroundImage.value = data.backgroundImage;
+                                    const img = new Image();
+                                    img.onload = () => { if (backgroundImage.value) backgroundImage.value.element = img; recalcAndRender(); };
+                                    img.src = data.backgroundImage.src;
+                                }
+
+                                selectedNodes.value.clear();
+                                selectedEdges.value.clear();
                                 recalcAndRender();
                             } else {
                                 alert("Invalid JSON file format");
@@ -632,32 +776,21 @@
                 };
 
                 const triggerImport = () => {
-                    document.getElementById("importFile").click();
+                    document.getElementById('importFile').click();
                 };
 
                 // --- LOAD SHEET FUNCTIONS ---
                 const parseLoadSheetCSV = (csvText) => {
                     const lines = csvText.trim().split(/\r?\n/);
                     if (lines.length < 2) {
-                        loadSheetStatus.value =
-                            "Error: CSV has no data rows";
+                        loadSheetStatus.value = 'Error: CSV has no data rows';
                         return;
                     }
 
                     // Parse header
-                    const headers = lines[0]
-                        .split(",")
-                        .map((h) => h.trim());
-                    const cfmIdx = headers.findIndex(
-                        (h) =>
-                            h.toLowerCase() ===
-                            loadSheetColumns.value.cfmCol.toLowerCase(),
-                    );
-                    const sizeIdx = headers.findIndex(
-                        (h) =>
-                            h.toLowerCase() ===
-                            loadSheetColumns.value.sizeCol.toLowerCase(),
-                    );
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    const cfmIdx = headers.findIndex(h => h.toLowerCase() === loadSheetColumns.value.cfmCol.toLowerCase());
+                    const sizeIdx = headers.findIndex(h => h.toLowerCase() === loadSheetColumns.value.sizeCol.toLowerCase());
 
                     if (cfmIdx === -1 || sizeIdx === -1) {
                         loadSheetStatus.value = `Error: Columns "${loadSheetColumns.value.cfmCol}" or "${loadSheetColumns.value.sizeCol}" not found`;
@@ -667,15 +800,15 @@
                     // Parse data rows with proper CSV handling (respects quoted fields)
                     const parseCSVLine = (line) => {
                         const result = [];
-                        let current = "";
+                        let current = '';
                         let inQuotes = false;
                         for (let i = 0; i < line.length; i++) {
                             const char = line[i];
                             if (char === '"') {
                                 inQuotes = !inQuotes;
-                            } else if (char === "," && !inQuotes) {
+                            } else if (char === ',' && !inQuotes) {
                                 result.push(current.trim());
-                                current = "";
+                                current = '';
                             } else {
                                 current += char;
                             }
@@ -688,21 +821,15 @@
                     for (let i = 1; i < lines.length; i++) {
                         const cols = parseCSVLine(lines[i]);
                         // Strip commas from CFM value (handles "1,000" format)
-                        const cfmRaw = (cols[cfmIdx] || "").replace(
-                            /,/g,
-                            "",
-                        );
+                        const cfmRaw = (cols[cfmIdx] || '').replace(/,/g, '');
                         const cfmVal = parseFloat(cfmRaw);
                         let sizeVal = cols[sizeIdx];
                         if (!isNaN(cfmVal) && sizeVal) {
                             // Strip inch symbols and normalize
-                            sizeVal = sizeVal.replace(/["'″′]/g, "").trim();
+                            sizeVal = sizeVal.replace(/["'″′]/g, '').trim();
                             // Normalize x separator to lowercase x
-                            sizeVal = sizeVal.replace(/\s*[xX×]\s*/g, "x");
-                            entries.push({
-                                cfm: cfmVal,
-                                ductSize: sizeVal,
-                            });
+                            sizeVal = sizeVal.replace(/\s*[xX×]\s*/g, 'x');
+                            entries.push({ cfm: cfmVal, ductSize: sizeVal });
                         }
                     }
 
@@ -730,15 +857,12 @@
                 };
 
                 const triggerLoadSheetUpload = () => {
-                    document.getElementById("loadSheetFile").click();
+                    document.getElementById('loadSheetFile').click();
                 };
 
                 // Load Sheet Persistence
                 const saveLoadSheetToStorage = () => {
-                    localStorage.setItem(
-                        "ariflow_loadsheet",
-                        JSON.stringify(loadSheet.value),
-                    );
+                    localStorage.setItem("ariflow_loadsheet", JSON.stringify(loadSheet.value));
                 };
 
                 const loadLoadSheetFromStorage = () => {
@@ -758,13 +882,13 @@
                 // Edit Dialog State
                 const showLoadSheetDialog = ref(false);
                 const editingEntry = ref(null); // null = adding new, otherwise index
-                const editCfm = ref("");
-                const editSize = ref("");
+                const editCfm = ref('');
+                const editSize = ref('');
 
                 const openAddEntry = () => {
                     editingEntry.value = null;
-                    editCfm.value = "";
-                    editSize.value = "";
+                    editCfm.value = '';
+                    editSize.value = '';
                     showLoadSheetDialog.value = true;
                 };
 
@@ -776,13 +900,8 @@
                 };
 
                 const saveEntry = () => {
-                    const cfmVal = parseFloat(
-                        editCfm.value.replace(/,/g, ""),
-                    );
-                    const sizeVal = editSize.value
-                        .trim()
-                        .replace(/["'″′]/g, "")
-                        .replace(/\s*[xX×]\s*/g, "x");
+                    const cfmVal = parseFloat(editCfm.value.replace(/,/g, ''));
+                    const sizeVal = editSize.value.trim().replace(/["'″′]/g, '').replace(/\s*[xX×]\s*/g, 'x');
 
                     if (isNaN(cfmVal) || !sizeVal) {
                         alert("Please enter valid CFM and Size values");
@@ -791,16 +910,10 @@
 
                     if (editingEntry.value === null) {
                         // Add new
-                        loadSheet.value.push({
-                            cfm: cfmVal,
-                            ductSize: sizeVal,
-                        });
+                        loadSheet.value.push({ cfm: cfmVal, ductSize: sizeVal });
                     } else {
                         // Update existing
-                        loadSheet.value[editingEntry.value] = {
-                            cfm: cfmVal,
-                            ductSize: sizeVal,
-                        };
+                        loadSheet.value[editingEntry.value] = { cfm: cfmVal, ductSize: sizeVal };
                     }
 
                     // Re-sort by CFM
@@ -813,22 +926,120 @@
 
                 const deleteEntry = (idx) => {
                     loadSheet.value.splice(idx, 1);
-                    loadSheetStatus.value =
-                        loadSheet.value.length > 0
-                            ? `${loadSheet.value.length} sizes loaded`
-                            : "";
+                    loadSheetStatus.value = loadSheet.value.length > 0 ? `${loadSheet.value.length} sizes loaded` : '';
                     saveLoadSheetToStorage();
                     recalcAndRender();
                 };
 
                 const clearLoadSheet = () => {
                     loadSheet.value = [];
-                    loadSheetStatus.value = "";
+                    loadSheetStatus.value = '';
                     localStorage.removeItem("ariflow_loadsheet");
                     // Clear duct sizes from edges
-                    edges.value.forEach((e) => {
+                    edges.value.forEach(e => {
                         delete e.ductSize;
                     });
+                    recalcAndRender();
+                };
+
+                // --- BACKGROUND IMAGE ---
+                const handleImageUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            // Initialize background image centered? or at 0,0
+                            // Let's put it at 0,0 world coords
+                            backgroundImage.value = {
+                                src: e.target.result,
+                                x: 0,
+                                y: 0,
+                                width: img.naturalWidth,
+                                height: img.naturalHeight,
+                                scale: 1,
+                                opacity: 0.5,
+                                element: img
+                            };
+                            isImageSelected.value = true;
+                            recalcAndRender();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                    event.target.value = "";
+                };
+
+                const triggerImageUpload = () => {
+                    document.getElementById('bgImageInput').click();
+                };
+
+                const deleteImage = () => {
+                    backgroundImage.value = null;
+                    isImageSelected.value = false;
+                    isDraggingImage.value = false;
+                    recalcAndRender();
+                };
+
+                // --- DUCT SIZING SUGGESTION ---
+                const targetHeadLoss = ref(0.08);
+
+                const calculateDuctDimension = (edgeIdx, solveFor) => {
+                    const edge = edges.value[edgeIdx];
+                    if (!edge) return;
+
+                    const cfm = edge.flow;
+                    const hl = targetHeadLoss.value;
+                    if (!cfm || !hl) return;
+
+                    // 1. Calculate Equivalent Diameter (De)
+                    const De = Math.pow(
+                        (0.109136 * Math.pow(cfm, 1.9)) / hl,
+                        1 / 5.02
+                    );
+
+                    let knownDim = 0;
+                    if (solveFor === 'height') {
+                        knownDim = parseFloat(edge.customWidth);
+                    } else {
+                        knownDim = parseFloat(edge.customHeight);
+                    }
+
+                    if (!knownDim || isNaN(knownDim)) return;
+
+                    // 2. Solve for unknown dimension
+                    let h = 1;
+                    const w = knownDim; // Treat known as width in formula, solve for height 'h'
+
+                    // Iterative solve
+                    while (
+                        1.3 *
+                        Math.pow(Math.pow(w * h, 0.625) / Math.pow(w + h, 0.25), 1) <
+                        De
+                    ) {
+                        h += 0.5;
+                        if (h > 500) break;
+                    }
+                    // Refine
+                    while (
+                        1.3 *
+                        Math.pow(Math.pow(w * h, 0.625) / Math.pow(w + h, 0.25), 1) >
+                        De
+                    ) {
+                        h -= 0.01;
+                    }
+
+                    const result = Math.round(h);
+
+                    if (solveFor === 'height') {
+                        edge.customHeight = result;
+                    } else {
+                        edge.customWidth = result;
+                    }
+
+                    edge.customSize = `${edge.customWidth}x${edge.customHeight}`;
                     recalcAndRender();
                 };
 
@@ -849,7 +1060,7 @@
 
                 const applyDuctSizes = () => {
                     // Apply duct sizes to edges based on their flow CFM
-                    edges.value.forEach((e) => {
+                    edges.value.forEach(e => {
                         if (e.isCustom && e.customSize) {
                             e.ductSize = e.customSize; // Use manual override
                         } else {
@@ -861,25 +1072,19 @@
                 // --- COORDINATE SYSTEMS ---
                 const screenToWorld = (sx, sy) => {
                     return {
-                        x:
-                            (sx - transform.value.offsetX) /
-                            transform.value.scale,
-                        y:
-                            (sy - transform.value.offsetY) /
-                            transform.value.scale,
+                        x: (sx - transform.value.offsetX) / transform.value.scale,
+                        y: (sy - transform.value.offsetY) / transform.value.scale
                     };
                 };
 
                 const getDistToEdge = (px, py, x1, y1, x2, y2) => {
                     const l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
                     if (l2 === 0) return Math.hypot(px - x1, py - y1);
-                    let t =
-                        ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) /
-                        l2;
+                    let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
                     t = Math.max(0, Math.min(1, t));
                     return Math.hypot(
                         px - (x1 + t * (x2 - x1)),
-                        py - (y1 + t * (y2 - y1)),
+                        py - (y1 + t * (y2 - y1))
                     );
                 };
 
@@ -888,7 +1093,7 @@
                         JSON.stringify({
                             nodes: nodes.value,
                             edges: edges.value,
-                        }),
+                        })
                     );
                     if (history.value.length > 20) history.value.shift();
                 };
@@ -898,7 +1103,8 @@
                     const state = JSON.parse(history.value.pop());
                     nodes.value = state.nodes;
                     edges.value = state.edges;
-                    selectedNode.value = null;
+                    selectedNodes.value.clear();
+                    selectedEdges.value.clear();
                     recalcAndRender();
                 };
 
@@ -912,10 +1118,7 @@
                 const calculateFlows = () => {
                     edges.value.forEach((e) => (e.flow = 0));
 
-                    const getReachableCFM = (
-                        startNode,
-                        visited = new Set(),
-                    ) => {
+                    const getReachableCFM = (startNode, visited = new Set()) => {
                         if (visited.has(startNode)) return 0;
                         visited.add(startNode);
 
@@ -931,19 +1134,18 @@
                                 e.flow = down;
                             });
 
-                        return (
-                            total +
-                            edges.value
-                                .filter((e) => e.from === startNode)
-                                .reduce((acc, e) => acc + e.flow, 0)
-                        );
+                        const outgoing = edges.value
+                            .filter((e) => e.from === startNode)
+                            .reduce((acc, e) => acc + e.flow, 0);
+
+                        const totalFlow = total + outgoing;
+                        nodes.value[startNode].flow = totalFlow;
+                        return totalFlow;
                     };
 
                     const roots = nodes.value
                         .map((_, i) => i)
-                        .filter(
-                            (i) => !edges.value.some((e) => e.to === i),
-                        );
+                        .filter((i) => !edges.value.some((e) => e.to === i));
                     roots.forEach((r) => getReachableCFM(r));
                 };
 
@@ -957,7 +1159,7 @@
                 const handleWheel = (e) => {
                     const zoomIntensity = 0.1;
                     const direction = e.deltaY > 0 ? -1 : 1;
-                    const factor = 1 + direction * zoomIntensity;
+                    const factor = 1 + (direction * zoomIntensity);
 
                     // Zoom point (mouse pos)
                     const rect = canvasRef.value.getBoundingClientRect();
@@ -965,12 +1167,8 @@
                     const mouseY = e.clientY - rect.top;
 
                     // World before zoom
-                    const wx =
-                        (mouseX - transform.value.offsetX) /
-                        transform.value.scale;
-                    const wy =
-                        (mouseY - transform.value.offsetY) /
-                        transform.value.scale;
+                    const wx = (mouseX - transform.value.offsetX) / transform.value.scale;
+                    const wy = (mouseY - transform.value.offsetY) / transform.value.scale;
 
                     // Apply zoom
                     let newScale = transform.value.scale * factor;
@@ -1007,21 +1205,96 @@
                         return;
                     }
 
-                    // DRAGGING NODE
-                    if (draggingNode.value !== null) {
-                        // Snap logic
-                        let tx = w.x;
-                        let ty = w.y;
+                    // DRAGGING IMAGE
+                    if (isDraggingImage.value && backgroundImage.value) {
+                        const dx = (mx - dragStartMouse.value.x) / transform.value.scale;
+                        const dy = (my - dragStartMouse.value.y) / transform.value.scale;
+
+                        const startPos = dragStartPositions.value.get('image');
+                        if (startPos) {
+                            backgroundImage.value.x = startPos.x + dx;
+                            backgroundImage.value.y = startPos.y + dy;
+                        }
+                        render();
+                        return;
+                    }
+
+                    // DRAGGING SELECTION
+                    if (isDraggingSelection.value && dragStartPositions.value.size > 0) {
+                        // Calculate total delta from start (Screen -> World)
+                        const dx = (mx - dragStartMouse.value.x) / transform.value.scale;
+                        const dy = (my - dragStartMouse.value.y) / transform.value.scale;
+
+                        // Get leader node (primary selection) for snapping reference
+                        let leaderId = draggingNode.value;
+                        if (leaderId === null || !selectedNodes.value.has(leaderId)) {
+                            if (selectedNodes.value.size > 0) {
+                                leaderId = Array.from(selectedNodes.value)[0];
+                            } else {
+                                return;
+                            }
+                        }
+
+                        const leaderStart = dragStartPositions.value.get(leaderId);
+                        if (!leaderStart) return;
+
+                        // Calculate Target Leader Position
+                        let tx = leaderStart.x + dx;
+                        let ty = leaderStart.y + dy;
 
                         if (snapToGrid.value) {
                             tx = Math.round(tx / 20) * 20;
                             ty = Math.round(ty / 20) * 20;
                         }
 
-                        nodes.value[draggingNode.value].x = tx;
-                        nodes.value[draggingNode.value].y = ty;
+                        // Calculate Effective Delta (Snapped)
+                        const effectiveDx = tx - leaderStart.x;
+                        const effectiveDy = ty - leaderStart.y;
 
+                        // Apply to all
+                        selectedNodes.value.forEach(idx => {
+                            const startPos = dragStartPositions.value.get(idx);
+                            if (startPos) {
+                                nodes.value[idx].x = startPos.x + effectiveDx;
+                                nodes.value[idx].y = startPos.y + effectiveDy;
+                            }
+                        });
+
+                        lastMouse.value = { x: mx, y: my };
                         recalcAndRender();
+                        return;
+                    }
+
+                    // BOX SELECTION
+                    if (selectionBox.value.active) {
+                        selectionBox.value.endX = w.x;
+                        selectionBox.value.endY = w.y;
+
+                        const bx = Math.min(selectionBox.value.startX, selectionBox.value.endX);
+                        const by = Math.min(selectionBox.value.startY, selectionBox.value.endY);
+                        const bw = Math.abs(selectionBox.value.endX - selectionBox.value.startX);
+                        const bh = Math.abs(selectionBox.value.endY - selectionBox.value.startY);
+
+                        selectedNodes.value.clear();
+                        selectedEdges.value.clear();
+
+                        nodes.value.forEach((n, i) => {
+                            if (n.x >= bx && n.x <= bx + bw && n.y >= by && n.y <= by + bh) {
+                                selectedNodes.value.add(i);
+                            }
+                        });
+
+                        edges.value.forEach((e, i) => {
+                            const n1 = nodes.value[e.from];
+                            const n2 = nodes.value[e.to];
+                            const midX = (n1.x + n2.x) / 2;
+                            const midY = (n1.y + n2.y) / 2;
+                            if (midX >= bx && midX <= bx + bw && midY >= by && midY <= by + bh) {
+                                selectedEdges.value.add(i);
+                            }
+                        });
+
+                        render();
                         return;
                     }
 
@@ -1031,14 +1304,7 @@
                     edges.value.forEach((edge, idx) => {
                         const n1 = nodes.value[edge.from];
                         const n2 = nodes.value[edge.to];
-                        const d = getDistToEdge(
-                            w.x,
-                            w.y,
-                            n1.x,
-                            n1.y,
-                            n2.x,
-                            n2.y,
-                        );
+                        const d = getDistToEdge(w.x, w.y, n1.x, n1.y, n2.x, n2.y);
                         if (d < minDist) {
                             minDist = d;
                             foundIdx = idx;
@@ -1048,8 +1314,7 @@
                     render();
                 };
 
-                const handleCanvasClick = (e) => {
-                    // Actual mousedown
+                const handleCanvasClick = (e) => { // Actual mousedown
                     const rect = canvasRef.value.getBoundingClientRect();
                     const mx = e.clientX - rect.left;
                     const my = e.clientY - rect.top;
@@ -1067,53 +1332,66 @@
                     let finalY = w.y;
 
                     // Apply Snap on Click (for new Nodes)
-                    if (
-                        snapToGrid.value &&
-                        (mode.value === "terminal" ||
-                            mode.value === "branch")
-                    ) {
+                    if (snapToGrid.value && (mode.value === 'terminal' || mode.value === 'branch')) {
                         finalX = Math.round(finalX / 20) * 20;
                         finalY = Math.round(finalY / 20) * 20;
                     }
 
-                    // Apply Snap on Draw Duct (endpoint) - Maybe? User didn't request explicitly but good UX.
-                    // Let's stick to Node Move/Place as requested.
-
                     // Hit test nodes (radius constant 25 for easier selection)
                     const clickedNodeIdx = nodes.value.findIndex(
-                        (n) => Math.hypot(n.x - w.x, n.y - w.y) < 25,
+                        (n) => Math.hypot(n.x - w.x, n.y - w.y) < 25
                     );
 
-                    // MOVE TOOL
-                    if (mode.value === "move") {
+                    // MOVE / SELECT TOOL
+                    if (mode.value === "move" || mode.value === "select") {
                         if (clickedNodeIdx !== -1) {
-                            draggingNode.value = clickedNodeIdx;
-                            selectedNode.value = clickedNodeIdx;
-                            selectedEdge.value = null;
-                        }
-                    }
+                            // Node Clicked
+                            if (e.shiftKey) {
+                                // Toggle Selection
+                                if (selectedNodes.value.has(clickedNodeIdx)) {
+                                    selectedNodes.value.delete(clickedNodeIdx);
+                                } else {
+                                    selectedNodes.value.add(clickedNodeIdx);
+                                }
+                            } else {
+                                // Single Select (unless already selected, then maybe start drag)
+                                // If we click a node that is part of the selection, we DON'T clear, 
+                                // because we might be about to drag the whole group.
+                                if (!selectedNodes.value.has(clickedNodeIdx)) {
+                                    selectedNodes.value.clear();
+                                    selectedEdges.value.clear();
+                                    selectedNodes.value.add(clickedNodeIdx);
+                                }
+                            }
 
-                    // SELECT MODE
-                    else if (mode.value === "select") {
-                        if (clickedNodeIdx !== -1) {
-                            selectedNode.value = clickedNodeIdx;
-                            selectedEdge.value = null;
+                            // Drag Initialization (Only in Move Mode)
+                            if (mode.value === 'move') {
+                                isDraggingSelection.value = true;
+                                draggingNode.value = clickedNodeIdx; // Leader node for snapping
+
+                                // Capture initial state
+                                dragStartMouse.value = { x: mx, y: my };
+                                dragStartPositions.value.clear();
+                                selectedNodes.value.forEach(id => {
+                                    if (nodes.value[id]) {
+                                        dragStartPositions.value.set(id, { x: nodes.value[id].x, y: nodes.value[id].y });
+                                    }
+                                });
+                            } else {
+                                isDraggingSelection.value = false;
+                                draggingNode.value = null;
+                            }
                         } else {
-                            // Check if clicked near edge
+                            // Empty Space or Edge
+
+                            // Check Edge Click
                             let minDist = 10 / transform.value.scale;
                             let foundEdgeIdx = -1;
 
                             edges.value.forEach((edge, idx) => {
                                 const n1 = nodes.value[edge.from];
                                 const n2 = nodes.value[edge.to];
-                                const d = getDistToEdge(
-                                    w.x,
-                                    w.y,
-                                    n1.x,
-                                    n1.y,
-                                    n2.x,
-                                    n2.y,
-                                );
+                                const d = getDistToEdge(w.x, w.y, n1.x, n1.y, n2.x, n2.y);
                                 if (d < minDist) {
                                     minDist = d;
                                     foundEdgeIdx = idx;
@@ -1121,11 +1399,26 @@
                             });
 
                             if (foundEdgeIdx !== -1) {
-                                selectedEdge.value = foundEdgeIdx;
-                                selectedNode.value = null;
+                                if (e.shiftKey) {
+                                    if (selectedEdges.value.has(foundEdgeIdx)) {
+                                        selectedEdges.value.delete(foundEdgeIdx);
+                                    } else {
+                                        selectedEdges.value.add(foundEdgeIdx);
+                                    }
+                                } else {
+                                    selectedNodes.value.clear();
+                                    selectedEdges.value.clear();
+                                    selectedEdges.value.add(foundEdgeIdx);
+                                }
                             } else {
-                                selectedEdge.value = null;
-                                selectedNode.value = null;
+                                // Empty space -> Box Select
+                                if (!e.shiftKey) {
+                                    selectedNodes.value.clear();
+                                    selectedEdges.value.clear();
+                                }
+                                if (mode.value === "select") {
+                                    selectionBox.value = { startX: w.x, startY: w.y, endX: w.x, endY: w.y, active: true };
+                                }
                             }
                         }
                     }
@@ -1139,63 +1432,88 @@
                                 cfm: defaultCfm.value,
                                 type: "terminal",
                             });
-                            selectedNode.value = nodes.value.length - 1;
-                            selectedEdge.value = null;
+                            selectedNodes.value.clear();
+                            selectedEdges.value.clear();
+                            selectedNodes.value.add(nodes.value.length - 1);
                         }
                     }
 
                     // ADD JUNCTION
                     else if (mode.value === "branch") {
                         if (clickedNodeIdx === -1) {
-                            nodes.value.push({
-                                x: finalX,
-                                y: finalY,
-                                cfm: 0,
-                                type: "branch",
-                            });
-                            selectedNode.value = nodes.value.length - 1;
-                            selectedEdge.value = null;
+                            nodes.value.push({ x: finalX, y: finalY, cfm: 0, type: "branch" });
+                            selectedNodes.value.clear();
+                            selectedEdges.value.clear();
+                            selectedNodes.value.add(nodes.value.length - 1);
                         }
                     }
 
                     // DRAW DUCT
                     else if (mode.value === "duct") {
                         if (clickedNodeIdx !== -1) {
-                            if (
-                                selectedNode.value !== null &&
-                                nodes.value[selectedNode.value]
-                            ) {
-                                if (selectedNode.value !== clickedNodeIdx) {
+                            // Use the last selected node as source if available
+                            let fromNode = null;
+                            if (selectedNodes.value.size === 1) {
+                                fromNode = Array.from(selectedNodes.value)[0];
+                            }
+
+                            if (fromNode !== null && nodes.value[fromNode]) {
+                                if (fromNode !== clickedNodeIdx) {
                                     const exists = edges.value.some(
                                         (e) =>
-                                            (e.from ===
-                                                selectedNode.value &&
-                                                e.to === clickedNodeIdx) ||
-                                            (e.to === selectedNode.value &&
-                                                e.from === clickedNodeIdx),
+                                            (e.from === fromNode && e.to === clickedNodeIdx) ||
+                                            (e.to === fromNode && e.from === clickedNodeIdx)
                                     );
                                     if (!exists) {
                                         edges.value.push({
-                                            from: selectedNode.value,
+                                            from: fromNode,
                                             to: clickedNodeIdx,
                                             flow: 0,
                                         });
-                                        selectedNode.value = clickedNodeIdx;
-                                        selectedEdge.value = null;
+                                        // Select new target for chain creation
+                                        selectedNodes.value.clear();
+                                        selectedNodes.value.add(clickedNodeIdx);
                                     }
                                 }
                             } else {
-                                selectedNode.value = clickedNodeIdx;
-                                selectedEdge.value = null;
+                                selectedNodes.value.clear();
+                                selectedNodes.value.add(clickedNodeIdx);
+                                selectedEdges.value.clear();
                             }
                         }
                     }
 
+                    // IMAGE MODE
+                    else if (mode.value === "image") {
+                        if (backgroundImage.value) {
+                            const bx = backgroundImage.value.x;
+                            const by = backgroundImage.value.y;
+                            const bw = backgroundImage.value.width * backgroundImage.value.scale;
+                            const bh = backgroundImage.value.height * backgroundImage.value.scale;
+
+                            // Hit test
+                            if (w.x >= bx && w.x <= bx + bw && w.y >= by && w.y <= by + bh) {
+                                isImageSelected.value = true;
+                                isDraggingImage.value = true;
+                                // Use dragStartMouse from multi-select logic or create new?
+                                // Reuse dragStartMouse is fine.
+                                dragStartMouse.value = { x: mx, y: my };
+                                dragStartPositions.value.clear(); // not used for image but good to clear
+                                // Store initial image pos in dragStartPositions with key 'image'?
+                                // No, just use refs or a temp logic.
+                                // Start Pos
+                                dragStartPositions.value.set('image', { x: bx, y: by });
+                            } else {
+                                isImageSelected.value = false;
+                            }
+                        }
+                    } else {
+                        // If switching modes, deselect image?
+                        isImageSelected.value = false;
+                    }
+
                     // FLIP
-                    else if (
-                        mode.value === "flip" &&
-                        hoveredEdge.value !== null
-                    ) {
+                    if (mode.value === "flip" && hoveredEdge.value !== null) {
                         const e = edges.value[hoveredEdge.value];
                         [e.from, e.to] = [e.to, e.from];
                     }
@@ -1206,33 +1524,52 @@
                 const handleMouseUp = () => {
                     isPanning.value = false;
                     draggingNode.value = null;
+                    isDraggingSelection.value = false;
+                    isDraggingImage.value = false;
+                    selectionBox.value.active = false;
                 };
 
                 const render = () => {
                     if (!canvasRef.value) return;
                     const ctx = canvasRef.value.getContext("2d");
-                    ctx.clearRect(
-                        0,
-                        0,
-                        canvasWidth.value,
-                        canvasHeight.value,
-                    );
+                    ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value);
 
                     ctx.save();
                     // Apply Transformations
-                    ctx.translate(
-                        transform.value.offsetX,
-                        transform.value.offsetY,
-                    );
+                    ctx.translate(transform.value.offsetX, transform.value.offsetY);
                     ctx.scale(transform.value.scale, transform.value.scale);
+
+                    // Background Image
+                    if (backgroundImage.value && backgroundImage.value.src) {
+                        if (!backgroundImage.value.element) {
+                            const img = new Image();
+                            img.src = backgroundImage.value.src;
+                            backgroundImage.value.element = img;
+                        }
+
+                        if (backgroundImage.value.element.complete && backgroundImage.value.element.naturalWidth !== 0) {
+                            ctx.save();
+                            ctx.globalAlpha = backgroundImage.value.opacity;
+                            const w = backgroundImage.value.width * backgroundImage.value.scale;
+                            const h = backgroundImage.value.height * backgroundImage.value.scale;
+                            ctx.drawImage(backgroundImage.value.element, backgroundImage.value.x, backgroundImage.value.y, w, h);
+                            ctx.restore();
+
+                            // Selection Border
+                            if (isImageSelected.value && mode.value === 'image') {
+                                ctx.save();
+                                ctx.strokeStyle = "#ff8c42";
+                                ctx.lineWidth = 2 / transform.value.scale;
+                                ctx.strokeRect(backgroundImage.value.x, backgroundImage.value.y, w, h);
+                                ctx.restore();
+                            }
+                        }
+                    }
 
                     // Grid Drawing (Infinite-ish)
                     // We need to calculate visible world bounds
                     const tl = screenToWorld(0, 0);
-                    const br = screenToWorld(
-                        canvasWidth.value,
-                        canvasHeight.value,
-                    );
+                    const br = screenToWorld(canvasWidth.value, canvasHeight.value);
 
                     ctx.strokeStyle = "#1a1614";
                     ctx.lineWidth = 1 / transform.value.scale; // Keep line width constant on screen
@@ -1266,7 +1603,7 @@
                         ctx.translate(mx, my);
                         ctx.rotate(angle);
 
-                        const headLen = 6 / transform.value.scale; // Scale arrow head? No, usually icons scale with zoom or stay fixed?
+                        const headLen = 6 / transform.value.scale; // Scale arrow head? No, usually icons scale with zoom or stay fixed? 
                         // Previous code used constant 6. If we zoom in, it gets bigger. Which is standard canvas behavior.
                         // Let's keep it standard.
 
@@ -1284,21 +1621,14 @@
                     edges.value.forEach((e, idx) => {
                         const n1 = nodes.value[e.from];
                         const n2 = nodes.value[e.to];
-                        const isHovered =
-                            hoveredEdge.value === idx &&
-                            mode.value === "flip";
+                        const isHovered = (hoveredEdge.value === idx && mode.value === "flip");
 
                         ctx.beginPath();
                         ctx.moveTo(n1.x, n1.y);
                         ctx.lineTo(n2.x, n2.y);
-                        ctx.lineTo(n2.x, n2.y);
-                        const isSelected = selectedEdge.value === idx;
-                        ctx.strokeStyle =
-                            isHovered || isSelected
-                                ? isSelected
-                                    ? "#sunset-glow"
-                                    : "#ffffff"
-                                : "#2d2621";
+
+                        const isSelected = selectedEdges.value.has(idx);
+                        ctx.strokeStyle = (isHovered || isSelected) ? (isSelected ? "#sunset-glow" : "#ffffff") : "#2d2621";
                         if (isSelected) {
                             ctx.strokeStyle = "#ff8c42"; // Selected Color
                             ctx.shadowColor = "#ff8c42";
@@ -1307,10 +1637,7 @@
                             ctx.shadowBlur = 0;
                         }
 
-                        ctx.lineWidth = Math.max(
-                            6,
-                            Math.min(20, 6 + e.flow / 200),
-                        );
+                        ctx.lineWidth = Math.max(6, Math.min(20, 6 + e.flow / 200));
                         ctx.lineCap = "round";
                         ctx.stroke();
 
@@ -1334,12 +1661,9 @@
                     });
 
                     // Preview Line (Duct Draw)
-                    if (
-                        mode.value === "duct" &&
-                        selectedNode.value !== null &&
-                        nodes.value[selectedNode.value]
-                    ) {
-                        const sn = nodes.value[selectedNode.value];
+                    if (mode.value === "duct" && selectedNodes.value.size === 1) {
+                        const idx = Array.from(selectedNodes.value)[0];
+                        const sn = nodes.value[idx];
 
                         // MouseWorld is updated in updateMouse
                         let tx = mouseWorld.value.x;
@@ -1362,7 +1686,7 @@
 
                     // Nodes
                     nodes.value.forEach((n, i) => {
-                        const isSelected = i === selectedNode.value;
+                        const isSelected = selectedNodes.value.has(i);
 
                         if (n.type === "terminal") {
                             // Symbol: Box with X
@@ -1375,16 +1699,9 @@
                             ctx.fillRect(-size, -size, size * 2, size * 2);
 
                             // Stroke
-                            ctx.strokeStyle = isSelected
-                                ? "#fff"
-                                : "#ff8c42";
+                            ctx.strokeStyle = isSelected ? "#fff" : "#ff8c42";
                             ctx.lineWidth = 2;
-                            ctx.strokeRect(
-                                -size,
-                                -size,
-                                size * 2,
-                                size * 2,
-                            );
+                            ctx.strokeRect(-size, -size, size * 2, size * 2);
 
                             // X
                             ctx.beginPath();
@@ -1399,37 +1716,49 @@
                             // Labels
                             ctx.textAlign = "center";
                             if (n.cfm) {
-                                ctx.fillStyle = isSelected
-                                    ? "#fff"
-                                    : "#6b5c54";
+                                ctx.fillStyle = isSelected ? "#fff" : "#6b5c54";
                                 ctx.font = '9px "Inter"';
-                                ctx.fillText(
-                                    `${n.cfm} CFM`,
-                                    n.x,
-                                    n.y + size + 12,
-                                );
+                                ctx.fillText(`${n.cfm} CFM`, n.x, n.y + size + 12);
                             }
                         } else {
-                            // Junction
+
                             ctx.beginPath();
                             ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
                             ctx.fillStyle = isSelected ? "#fff" : "#4a3728";
                             ctx.fill();
-                            ctx.strokeStyle = isSelected
-                                ? "#fff"
-                                : "#4a3728";
+                            ctx.strokeStyle = isSelected ? "#fff" : "#4a3728";
                             ctx.stroke();
                         }
                     });
 
-                    ctx.restore(); // Restore Identity for any UI overlays?
+                    // Selection Box
+                    if (selectionBox.value.active) {
+                        const bx = Math.min(selectionBox.value.startX, selectionBox.value.endX);
+                        const by = Math.min(selectionBox.value.startY, selectionBox.value.endY);
+                        const bw = Math.abs(selectionBox.value.endX - selectionBox.value.startX);
+                        const bh = Math.abs(selectionBox.value.endY - selectionBox.value.startY);
+
+                        ctx.save();
+                        ctx.strokeStyle = "#ff8c42";
+                        ctx.lineWidth = 1 / transform.value.scale;
+                        ctx.setLineDash([5 / transform.value.scale, 5 / transform.value.scale]);
+                        ctx.strokeRect(bx, by, bw, bh);
+                        ctx.fillStyle = "rgba(255, 140, 66, 0.1)";
+                        ctx.fillRect(bx, by, bw, bh);
+                        ctx.restore();
+                    }
+
+                    ctx.restore(); // Restore Identity for any UI overlays? 
                     // Currently no screen-space UI overlays in canvas path.
                 };
 
                 const clearAll = () => {
                     nodes.value = [];
                     edges.value = [];
-                    selectedNode.value = null;
+                    selectedNodes.value.clear();
+                    selectedEdges.value.clear();
+                    backgroundImage.value = null;
+                    isImageSelected.value = false;
                     render();
                 };
 
@@ -1464,8 +1793,27 @@
                     setTool,
                     nodes,
                     edges,
-                    selectedNode,
-                    selectedEdge,
+
+                    // Selection State
+                    selectedNodes,
+                    selectedEdges,
+                    singleSelectedNode,
+                    singleSelectedEdge,
+                    selectionBox,
+                    isDraggingSelection,
+
+                    // Image State & Functions
+                    backgroundImage,
+                    isImageSelected,
+                    handleImageUpload,
+                    triggerImageUpload,
+                    deleteImage,
+
+                    // Duct Sizing Suggestion
+                    targetHeadLoss,
+                    calculateDuctDimension,
+
+                    deleteSelected,
                     history,
                     defaultCfm,
                     undo,
