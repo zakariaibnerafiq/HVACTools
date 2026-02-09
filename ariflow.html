@@ -143,9 +143,9 @@
             </a>
         </header>
 
-        <main class="flex-1 flex overflow-hidden">
+        <main class="flex-1 flex overflow-hidden relative">
             <!-- Canvas Area -->
-            <div class="flex-1 relative bg-[#090909] cursor-crosshair" @mousemove="updateMouse"
+            <div class="flex-1 relative bg-[#090909] cursor-crosshair overflow-hidden min-w-0" @mousemove="updateMouse"
                 @mousedown.prevent="handleCanvasClick" @mouseup="handleMouseUp" @wheel.prevent="handleWheel">
                 <canvas ref="canvasRef" :width="canvasWidth" :height="canvasHeight" class="block"></canvas>
 
@@ -158,7 +158,7 @@
             </div>
 
             <!-- Properties Sidebar -->
-            <div class="w-[280px] bg-[#0d0d0d] border-l border-border-low flex flex-col z-20">
+            <div class="w-[280px] bg-[#0d0d0d] border-l border-border-low flex flex-col z-20 h-full shrink-0">
                 <div class="p-6 border-b border-border-low">
                     <div v-if="selectedNodes.size > 0 || selectedEdges.size > 0" class="mb-4">
                         <div class="text-sunset-glow text-sm font-mono mb-2">
@@ -192,8 +192,28 @@
                     </div>
                 </div>
 
-                <div class="p-6 flex-1 overflow-y-auto">
-                    <div v-if="singleSelectedNode !== null && nodes[singleSelectedNode]" class="space-y-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0">
+                    <!-- Multiple Terminals Selected -->
+                    <div v-if="selectedNodes.size > 1 && allSelectedAreTerminals" class="space-y-6">
+                        <div class="text-sunset-glow text-sm font-mono mb-2">
+                            {{ selectedNodes.size }} Terminals Selected
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Bulk Airflow
+                                (CFM)</label>
+                            <input type="number" v-model="bulkCfm" placeholder="Enter CFM"
+                                class="w-full bg-[#12100e] border border-border-med p-3 text-text-main outline-none text-right font-mono focus:border-sunset-glow focus:shadow-[0_0_15px_rgba(255,140,66,0.1)] transition-all mb-2" />
+                            <button @click="applyBulkCfm"
+                                class="w-full py-2 text-[10px] uppercase tracking-wider bg-sunset-glow text-bg hover:brightness-110 transition-all rounded-sm font-bold">
+                                Apply to All
+                            </button>
+                            <p class="text-[9px] text-text-muted mt-2">Apply the same CFM value to all selected
+                                terminals</p>
+                        </div>
+                    </div>
+
+                    <!-- Single Node Properties -->
+                    <div v-else-if="singleSelectedNode !== null && nodes[singleSelectedNode]" class="space-y-6">
                         <!-- Terminal Properties -->
                         <div v-if="nodes[singleSelectedNode].type === 'terminal'" class="space-y-3">
                             <div>
@@ -402,55 +422,66 @@
 
                     <!-- Load Sheet Section -->
                     <div class="mt-4 pt-4 border-t border-border-low space-y-3">
-                        <h3 class="text-[10px] text-text-muted uppercase tracking-widest">Duct Size Schedule</h3>
+                        <h3 @click="isScheduleExpanded = !isScheduleExpanded"
+                            class="text-[10px] text-text-muted uppercase tracking-widest flex items-center justify-between cursor-pointer hover:text-white transition-colors select-none">
+                            <span>Duct Size Schedule</span>
+                            <svg :class="{'rotate-180': isScheduleExpanded}" class="transition-transform duration-200"
+                                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </h3>
 
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="text-[9px] text-text-muted block mb-1">CFM Column</label>
-                                <input type="text" v-model="loadSheetColumns.cfmCol"
-                                    class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all">
+                        <!-- Collapsible Content -->
+                        <div v-show="isScheduleExpanded" class="space-y-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[9px] text-text-muted block mb-1">CFM Column</label>
+                                    <input type="text" v-model="loadSheetColumns.cfmCol"
+                                        class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-text-muted block mb-1">Size Column</label>
+                                    <input type="text" v-model="loadSheetColumns.sizeCol"
+                                        class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all">
+                                </div>
                             </div>
-                            <div>
-                                <label class="text-[9px] text-text-muted block mb-1">Size Column</label>
-                                <input type="text" v-model="loadSheetColumns.sizeCol"
-                                    class="w-full bg-[#12100e] border border-border-med px-2 py-1 text-text-muted text-xs outline-none font-mono focus:border-sunset-glow transition-all">
-                            </div>
-                        </div>
 
-                        <div class="grid grid-cols-2 gap-2">
-                            <button @click="triggerLoadSheetUpload"
-                                class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-sunset-glow/50 text-sunset-glow hover:bg-sunset-glow/10 transition-all rounded-sm flex items-center justify-center gap-1">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button @click="triggerLoadSheetUpload"
+                                    class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-sunset-glow/50 text-sunset-glow hover:bg-sunset-glow/10 transition-all rounded-sm flex items-center justify-center gap-1">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="12" y1="18" x2="12" y2="12"></line>
+                                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                                    </svg>
+                                    Upload CSV
+                                </button>
+                                <button @click="clearLoadSheet" :disabled="loadSheet.length === 0"
+                                    class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white disabled:opacity-30 transition-all rounded-sm">
+                                    Clear
+                                </button>
+                                <input type="file" id="loadSheetFile" accept=".csv" class="hidden"
+                                    @change="handleLoadSheetUpload">
+                            </div>
+
+                            <div v-if="loadSheetStatus" class="text-[10px] font-mono"
+                                :class="loadSheetStatus.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
+                                {{ loadSheetStatus }}
+                            </div>
+
+                            <button @click="showLoadSheetDialog = true"
+                                class="w-full py-2 text-[10px] uppercase tracking-widest bg-[#1a1614] border border-border-med text-text-muted hover:text-white hover:border-sunset-glow transition-all rounded-sm flex items-center justify-center gap-2">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                    <line x1="12" y1="18" x2="12" y2="12"></line>
-                                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
-                                Upload CSV
+                                Manage Schedule
                             </button>
-                            <button @click="clearLoadSheet" :disabled="loadSheet.length === 0"
-                                class="py-2 text-[10px] uppercase tracking-widest bg-[#12100e] border border-border-med text-text-muted hover:text-white disabled:opacity-30 transition-all rounded-sm">
-                                Clear
-                            </button>
-                            <input type="file" id="loadSheetFile" accept=".csv" class="hidden"
-                                @change="handleLoadSheetUpload">
                         </div>
-
-                        <div v-if="loadSheetStatus" class="text-[10px] font-mono"
-                            :class="loadSheetStatus.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
-                            {{ loadSheetStatus }}
-                        </div>
-
-                        <button @click="showLoadSheetDialog = true"
-                            class="w-full py-2 text-[10px] uppercase tracking-widest bg-[#1a1614] border border-border-med text-text-muted hover:text-white hover:border-sunset-glow transition-all rounded-sm flex items-center justify-center gap-2">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                            Manage Schedule
-                        </button>
                     </div>
                 </div>
             </div>
@@ -543,7 +574,7 @@
     </div>
 
     <script>
-        const { createApp, ref, onMounted, onUnmounted, computed } = Vue;
+        const { createApp, ref, onMounted, onUnmounted, computed, nextTick } = Vue;
 
         createApp({
             setup() {
@@ -581,6 +612,33 @@
                     return null;
                 });
 
+                // Check if selection contains only terminals (for bulk CFM edit)
+                const allSelectedAreTerminals = computed(() => {
+                    if (selectedNodes.value.size === 0 || selectedEdges.value.size > 0) return false;
+                    for (const idx of selectedNodes.value) {
+                        if (nodes.value[idx]?.type !== 'terminal') return false;
+                    }
+                    return true;
+                });
+
+                const bulkCfm = ref('');
+
+                const applyBulkCfm = () => {
+                    const cfmValue = parseFloat(bulkCfm.value);
+                    if (isNaN(cfmValue) || cfmValue <= 0) {
+                        alert('Please enter a valid CFM value');
+                        return;
+                    }
+                    saveHistory();
+                    selectedNodes.value.forEach(idx => {
+                        if (nodes.value[idx]?.type === 'terminal') {
+                            nodes.value[idx].cfm = cfmValue;
+                        }
+                    });
+                    bulkCfm.value = '';
+                    recalcAndRender();
+                };
+
                 const selectionBox = ref({ startX: 0, startY: 0, endX: 0, endY: 0, active: false });
                 const isDraggingSelection = ref(false);
 
@@ -605,6 +663,7 @@
                 const loadSheet = ref([]); // Array of { cfm: number, ductSize: string }, sorted by cfm
                 const loadSheetColumns = ref({ cfmCol: 'CFM', sizeCol: 'Size' });
                 const loadSheetStatus = ref(''); // Status message for UI
+                const isScheduleExpanded = ref(false); // Collapsible state
 
                 const tools = [
                     { id: "select", label: "Select / Edit" },
@@ -1535,6 +1594,11 @@
                     ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value);
 
                     ctx.save();
+
+                    // Scale for device pixel ratio (retina displays, zoom)
+                    const dpr = window.devicePixelRatio || 1;
+                    ctx.scale(dpr, dpr);
+
                     // Apply Transformations
                     ctx.translate(transform.value.offsetX, transform.value.offsetY);
                     ctx.scale(transform.value.scale, transform.value.scale);
@@ -1763,16 +1827,32 @@
                 };
 
                 onMounted(() => {
-                    // Initial canvas sizing
+                    // Initial canvas sizing with DPI scaling
                     const container = canvasRef.value.parentElement;
-                    canvasWidth.value = container.clientWidth;
-                    canvasHeight.value = container.clientHeight;
+                    const updateCanvasSize = () => {
+                        const dpr = window.devicePixelRatio || 1;
+                        const displayWidth = container.clientWidth;
+                        const displayHeight = container.clientHeight;
+
+                        // Set canvas internal resolution (scaled by DPR)
+                        canvasWidth.value = displayWidth * dpr;
+                        canvasHeight.value = displayHeight * dpr;
+
+                        // Set canvas display size via CSS
+                        canvasRef.value.style.width = `${displayWidth}px`;
+                        canvasRef.value.style.height = `${displayHeight}px`;
+
+                        // Wait for Vue to update the canvas element before rendering
+                        nextTick(() => {
+                            render();
+                        });
+                    };
+
+                    updateCanvasSize();
 
                     // Resize observer
                     new ResizeObserver(() => {
-                        canvasWidth.value = container.clientWidth;
-                        canvasHeight.value = container.clientHeight;
-                        render();
+                        updateCanvasSize();
                     }).observe(container);
 
                     window.addEventListener("keydown", handleKeydown);
@@ -1836,6 +1916,13 @@
                     loadSheet,
                     loadSheetColumns,
                     loadSheetStatus,
+
+                    // Bulk CFM Editor
+                    allSelectedAreTerminals,
+                    bulkCfm,
+                    applyBulkCfm,
+
+                    isScheduleExpanded,
                     triggerLoadSheetUpload,
                     handleLoadSheetUpload,
                     clearLoadSheet,
