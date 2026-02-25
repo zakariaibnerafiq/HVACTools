@@ -100,6 +100,17 @@
                     <rect v-if="t.id === 'image'" x="3" y="3" width="18" height="18" rx="2" ry="2" />
                     <circle v-if="t.id === 'image'" cx="8.5" cy="8.5" r="1.5" />
                     <polyline v-if="t.id === 'image'" points="21 15 16 10 5 21" />
+
+                    <!-- Ref Line: horizontal line with a circle on the left -->
+                    <circle v-if="t.id === 'refline'" cx="4" cy="12" r="2.5" />
+                    <line v-if="t.id === 'refline'" x1="6.5" y1="12" x2="21" y2="12" />
+                    <line v-if="t.id === 'refline'" x1="13" y1="9" x2="13" y2="7" />
+                    <text v-if="t.id === 'refline'" x="10" y="6"
+                        style="font-size:5px;fill:currentColor;stroke:none;font-family:monospace">REF</text>
+
+                    <!-- Text: stylised A -->
+                    <text v-if="t.id === 'text'" x="4" y="19"
+                        style="font-size:18px;fill:currentColor;stroke:none;font-family:serif;font-weight:bold">A</text>
                 </svg>
             </button>
         </div>
@@ -373,8 +384,218 @@
                                     Remove Image
                                 </button>
                             </div>
+                        </div>
+                    </div>
 
-                            <!-- Keep hidden input for re-upload if needed, or just let them delete first -->
+                    <!-- Bulk Reference Line Properties -->
+                    <div v-else-if="allSelectedAreRefLines" class="space-y-4">
+                        <h3 class="text-sunset-glow text-sm font-mono mb-2">Bulk Reference Lines
+                            ({{selectedRefLines.size}})</h3>
+
+                        <div>
+                            <label
+                                class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Orientation</label>
+                            <div class="flex gap-2">
+                                <button @click="applyBulkRefLineProperty('orientation', 'horizontal')"
+                                    class="flex-1 py-2 text-[10px] uppercase tracking-wider rounded-sm bg-[#12100e] text-text-muted border border-border-med hover:text-white transition-all">
+                                    Horizontal
+                                </button>
+                                <button @click="applyBulkRefLineProperty('orientation', 'vertical')"
+                                    class="flex-1 py-2 text-[10px] uppercase tracking-wider rounded-sm bg-[#12100e] text-text-muted border border-border-med hover:text-white transition-all">
+                                    Vertical
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Color</label>
+                            <input type="color" @change="e => applyBulkRefLineProperty('color', e.target.value)"
+                                class="w-full h-10 bg-[#12100e] border border-border-med rounded cursor-pointer" />
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Length
+                                (px)</label>
+                            <input type="number"
+                                @change="e => applyBulkRefLineProperty('length', parseInt(e.target.value))" min="10"
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none"
+                                placeholder="Enter length..." />
+                        </div>
+
+                        <div class="pt-2 border-t border-border-med">
+                            <button @click="deleteRefLine"
+                                class="w-full py-2 text-[10px] uppercase tracking-widest border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-all rounded-sm">
+                                Delete Selected Lines
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Text Annotation Properties -->
+                    <div v-else-if="allSelectedAreTexts" class="space-y-4">
+                        <h3 class="text-sunset-glow text-sm font-mono mb-2">Bulk Text Annotations
+                            ({{selectedTexts.size}})</h3>
+
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Font Size
+                                (px)</label>
+                            <input type="number" @change="e => applyBulkTextProperty('size', parseInt(e.target.value))"
+                                min="6" max="120"
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none"
+                                placeholder="Enter font size..." />
+                        </div>
+
+                        <div>
+                            <label
+                                class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Color</label>
+                            <input type="color" @change="e => applyBulkTextProperty('color', e.target.value)"
+                                class="w-full h-10 bg-[#12100e] border border-border-med rounded cursor-pointer" />
+                        </div>
+
+                        <div class="pt-2 border-t border-border-med">
+                            <button @click="deleteTextAnnotation"
+                                class="w-full py-2 text-[10px] uppercase tracking-widest border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-all rounded-sm">
+                                Delete Selected Texts
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Terminal CFM Editor -->
+                    <div v-else-if="allSelectedAreTerminals" class="space-y-4">
+                        <h3 class="text-sunset-glow text-sm font-mono mb-2">Bulk Terminal Edit ({{selectedNodes.size}})
+                        </h3>
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">New CFM for
+                                All</label>
+                            <div class="flex gap-2">
+                                <input type="number" v-model.number="bulkCfm"
+                                    class="flex-1 bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none"
+                                    placeholder="CFM..." />
+                                <button @click="applyBulkCfm"
+                                    class="px-4 bg-sunset-glow text-bg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all rounded-sm">
+                                    Apply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reference Line Properties -->
+                    <div v-else-if="singleSelectedRefLine !== null && refLines[singleSelectedRefLine]"
+                        class="space-y-4">
+                        <h3 class="text-sunset-glow text-sm font-mono mb-2">Reference Line</h3>
+
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Name</label>
+                            <input type="text" v-model="refLines[singleSelectedRefLine].name" @input="recalcAndRender"
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                        </div>
+
+                        <div>
+                            <label
+                                class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Orientation</label>
+                            <div class="flex gap-2">
+                                <button
+                                    @click="refLines[singleSelectedRefLine].orientation = 'horizontal'; recalcAndRender()"
+                                    :class="refLines[singleSelectedRefLine].orientation === 'horizontal' ? 'bg-sunset-glow text-bg' : 'bg-[#12100e] text-text-muted border border-border-med hover:text-white'"
+                                    class="flex-1 py-2 text-[10px] uppercase tracking-wider rounded-sm transition-all">
+                                    Horizontal
+                                </button>
+                                <button
+                                    @click="refLines[singleSelectedRefLine].orientation = 'vertical'; recalcAndRender()"
+                                    :class="refLines[singleSelectedRefLine].orientation === 'vertical' ? 'bg-sunset-glow text-bg' : 'bg-[#12100e] text-text-muted border border-border-med hover:text-white'"
+                                    class="flex-1 py-2 text-[10px] uppercase tracking-wider rounded-sm transition-all">
+                                    Vertical
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Color</label>
+                            <input type="color" v-model="refLines[singleSelectedRefLine].color" @input="recalcAndRender"
+                                class="w-full h-10 bg-[#12100e] border border-border-med rounded cursor-pointer" />
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Length
+                                (px)</label>
+                            <input type="number" v-model.number="refLines[singleSelectedRefLine].length"
+                                @input="recalcAndRender" min="10"
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[9px] text-text-muted block mb-1">X Pos</label>
+                                <input type="number" v-model.number="refLines[singleSelectedRefLine].x"
+                                    @input="recalcAndRender"
+                                    class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                            </div>
+                            <div>
+                                <label class="text-[9px] text-text-muted block mb-1">Y Pos</label>
+                                <input type="number" v-model.number="refLines[singleSelectedRefLine].y"
+                                    @input="recalcAndRender"
+                                    class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-border-med">
+                            <button @click="deleteRefLine"
+                                class="w-full py-2 text-[10px] uppercase tracking-widest border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-all rounded-sm">
+                                Delete Reference Line
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Text Annotation Properties -->
+                    <div v-else-if="singleSelectedText !== null && textAnnotations[singleSelectedText]"
+                        class="space-y-4">
+                        <h3 class="text-sunset-glow text-sm font-mono mb-2">Text Annotation</h3>
+
+                        <div>
+                            <label
+                                class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Content</label>
+                            <input type="text" v-model="textAnnotations[singleSelectedText].content"
+                                @input="recalcAndRender"
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Font Size
+                                (px)</label>
+                            <input type="number" v-model.number="textAnnotations[singleSelectedText].size"
+                                @input="recalcAndRender" min="6" max="120"
+                                class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                        </div>
+
+                        <div>
+                            <label
+                                class="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Color</label>
+                            <input type="color" v-model="textAnnotations[singleSelectedText].color"
+                                @input="recalcAndRender"
+                                class="w-full h-10 bg-[#12100e] border border-border-med rounded cursor-pointer" />
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[9px] text-text-muted block mb-1">X Pos</label>
+                                <input type="number" v-model.number="textAnnotations[singleSelectedText].x"
+                                    @input="recalcAndRender"
+                                    class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                            </div>
+                            <div>
+                                <label class="text-[9px] text-text-muted block mb-1">Y Pos</label>
+                                <input type="number" v-model.number="textAnnotations[singleSelectedText].y"
+                                    @input="recalcAndRender"
+                                    class="w-full bg-[#12100e] border border-border-med p-2 text-text-main font-mono text-sm focus:border-sunset-glow outline-none" />
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-border-med">
+                            <button @click="deleteTextAnnotation"
+                                class="w-full py-2 text-[10px] uppercase tracking-widest border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-all rounded-sm">
+                                Delete Text
+                            </button>
                         </div>
                     </div>
 
@@ -714,6 +935,20 @@
                 const isImageSelected = ref(false);
                 const isDraggingImage = ref(false);
 
+                // Reference Lines State
+                // Structure: { id, name, color, orientation:'horizontal'|'vertical', x, y, length }
+                const refLines = ref([]);
+                const selectedRefLines = ref(new Set());
+
+                // Text Annotations State
+                // Structure: { id, content, x, y, size, color }
+                const textAnnotations = ref([]);
+                const selectedTexts = ref(new Set());
+
+                // Dragging ref line / text annotation
+                const isDraggingRefLine = ref(false);
+                const isDraggingTextAnnot = ref(false);
+
                 // Computed helpers for property panel compatibility
                 const singleSelectedNode = computed(() => {
                     if (selectedNodes.value.size === 1) {
@@ -729,12 +964,38 @@
                     return null;
                 });
 
+                const singleSelectedRefLine = computed(() => {
+                    if (selectedRefLines.value.size === 1) {
+                        return Array.from(selectedRefLines.value)[0];
+                    }
+                    return null;
+                });
+
+                const singleSelectedText = computed(() => {
+                    if (selectedTexts.value.size === 1) {
+                        return Array.from(selectedTexts.value)[0];
+                    }
+                    return null;
+                });
+
                 // Check if selection contains only terminals (for bulk CFM edit)
                 const allSelectedAreTerminals = computed(() => {
-                    if (selectedNodes.value.size === 0 || selectedEdges.value.size > 0) return false;
+                    if (selectedNodes.value.size === 0 || selectedEdges.value.size > 0 || selectedRefLines.value.size > 0 || selectedTexts.value.size > 0) return false;
                     for (const idx of selectedNodes.value) {
                         if (nodes.value[idx]?.type !== 'terminal') return false;
                     }
+                    return true;
+                });
+
+                // Check if selection contains only ref lines
+                const allSelectedAreRefLines = computed(() => {
+                    if (selectedRefLines.value.size <= 1 || selectedNodes.value.size > 0 || selectedEdges.value.size > 0 || selectedTexts.value.size > 0) return false;
+                    return true;
+                });
+
+                // Check if selection contains only text annotations
+                const allSelectedAreTexts = computed(() => {
+                    if (selectedTexts.value.size <= 1 || selectedNodes.value.size > 0 || selectedEdges.value.size > 0 || selectedRefLines.value.size > 0) return false;
                     return true;
                 });
 
@@ -753,6 +1014,27 @@
                         }
                     });
                     bulkCfm.value = '';
+                    recalcAndRender();
+                };
+
+                // Bulk Annotation Update Helpers
+                const applyBulkRefLineProperty = (prop, value) => {
+                    saveHistory();
+                    selectedRefLines.value.forEach(idx => {
+                        if (refLines.value[idx]) {
+                            refLines.value[idx][prop] = value;
+                        }
+                    });
+                    recalcAndRender();
+                };
+
+                const applyBulkTextProperty = (prop, value) => {
+                    saveHistory();
+                    selectedTexts.value.forEach(idx => {
+                        if (textAnnotations.value[idx]) {
+                            textAnnotations.value[idx][prop] = value;
+                        }
+                    });
                     recalcAndRender();
                 };
 
@@ -829,12 +1111,14 @@
 
                 const tools = [
                     { id: "select", label: "Select / Edit" },
-                    { id: "move", label: "Move Node" }, // New Tool
+                    { id: "move", label: "Move Node" },
                     { id: "terminal", label: "Add Terminal" },
                     { id: "branch", label: "Add Junction" },
                     { id: "duct", label: "Draw Duct" },
                     { id: "flip", label: "Flip Flow" },
                     { id: "image", label: "Image Mode" },
+                    { id: "refline", label: "Reference Line" },
+                    { id: "text", label: "Text Annotation" },
                 ];
 
                 const setTool = (id) => {
@@ -846,41 +1130,80 @@
                     }
                 };
 
+                const deleteRefLine = () => {
+                    if (selectedRefLines.value.size === 0) return;
+                    saveHistory();
+                    const toDelete = Array.from(selectedRefLines.value).sort((a, b) => b - a);
+                    toDelete.forEach(idx => {
+                        refLines.value.splice(idx, 1);
+                    });
+                    selectedRefLines.value.clear();
+                    recalcAndRender();
+                };
+
+                const deleteTextAnnotation = () => {
+                    if (selectedTexts.value.size === 0) return;
+                    saveHistory();
+                    const toDelete = Array.from(selectedTexts.value).sort((a, b) => b - a);
+                    toDelete.forEach(idx => {
+                        textAnnotations.value.splice(idx, 1);
+                    });
+                    selectedTexts.value.clear();
+                    recalcAndRender();
+                };
+
                 const deleteSelected = () => {
-                    if (selectedNodes.value.size === 0 && selectedEdges.value.size === 0) return;
+                    if (selectedNodes.value.size === 0 && selectedEdges.value.size === 0 &&
+                        selectedRefLines.value.size === 0 && selectedTexts.value.size === 0) return;
 
                     saveHistory();
 
-                    // Convert sets to arrays for processing
-                    const nodesToDelete = Array.from(selectedNodes.value).sort((a, b) => b - a);
+                    // Reference Lines
+                    if (selectedRefLines.value.size > 0) {
+                        const toDelete = Array.from(selectedRefLines.value).sort((a, b) => b - a);
+                        toDelete.forEach(idx => refLines.value.splice(idx, 1));
+                        selectedRefLines.value.clear();
+                    }
 
-                    // Remove edges connected to deleted nodes first
-                    const newEdges = [];
-                    edges.value.forEach((e, idx) => {
-                        const explicitDelete = selectedEdges.value.has(idx);
-                        const nodeDelete = nodesToDelete.includes(e.from) || nodesToDelete.includes(e.to);
+                    // Text Annotations
+                    if (selectedTexts.value.size > 0) {
+                        const toDelete = Array.from(selectedTexts.value).sort((a, b) => b - a);
+                        toDelete.forEach(idx => textAnnotations.value.splice(idx, 1));
+                        selectedTexts.value.clear();
+                    }
 
-                        if (!explicitDelete && !nodeDelete) {
-                            newEdges.push(e);
-                        }
-                    });
+                    // Nodes and Edges
+                    if (selectedNodes.value.size > 0 || selectedEdges.value.size > 0) {
+                        // Convert sets to arrays for processing
+                        const nodesToDelete = Array.from(selectedNodes.value).sort((a, b) => b - a);
 
-                    edges.value = newEdges;
+                        // Remove edges connected to deleted nodes first
+                        const newEdges = [];
+                        edges.value.forEach((e, idx) => {
+                            const explicitDelete = selectedEdges.value.has(idx);
+                            const nodeDelete = nodesToDelete.includes(e.from) || nodesToDelete.includes(e.to);
 
-                    // Remove nodes
-                    // We must remove from highest index to lowest to avoid shifting issues
-                    nodesToDelete.forEach(idx => {
-                        nodes.value.splice(idx, 1);
-                        // Adjust edge indices for remaining edges
-                        edges.value.forEach(e => {
-                            if (e.from > idx) e.from--;
-                            if (e.to > idx) e.to--;
+                            if (!explicitDelete && !nodeDelete) {
+                                newEdges.push(e);
+                            }
                         });
-                    });
 
-                    // Clear Selection
-                    selectedNodes.value.clear();
-                    selectedEdges.value.clear();
+                        edges.value = newEdges;
+
+                        // Remove nodes
+                        nodesToDelete.forEach(idx => {
+                            nodes.value.splice(idx, 1);
+                            // Adjust edge indices for remaining edges
+                            edges.value.forEach(e => {
+                                if (e.from > idx) e.from--;
+                                if (e.to > idx) e.to--;
+                            });
+                        });
+
+                        selectedNodes.value.clear();
+                        selectedEdges.value.clear();
+                    }
+
                     recalcAndRender();
                 };
 
@@ -896,6 +1219,8 @@
                         }
                         selectedNodes.value.clear();
                         selectedEdges.value.clear();
+                        selectedRefLines.value.clear();
+                        selectedTexts.value.clear();
                         render();
                     }
                     if (e.key === "Delete") {
@@ -916,7 +1241,9 @@
                         edges: edges.value,
                         settings: settings.value,
                         version: 1,
-                        backgroundImage: backgroundImage.value ? { ...backgroundImage.value, element: undefined } : null
+                        backgroundImage: backgroundImage.value ? { ...backgroundImage.value, element: undefined } : null,
+                        refLines: refLines.value,
+                        textAnnotations: textAnnotations.value,
                     };
                     localStorage.setItem("ariflow_data", JSON.stringify(data));
                 };
@@ -929,6 +1256,8 @@
                             if (data.nodes && data.edges) {
                                 nodes.value = data.nodes;
                                 edges.value = data.edges;
+                                refLines.value = data.refLines || [];
+                                textAnnotations.value = data.textAnnotations || [];
 
                                 if (data.settings) {
                                     settings.value = { ...defaultSettings, ...data.settings };
@@ -956,7 +1285,9 @@
                         settings: settings.value,
                         version: 1,
                         timestamp: new Date().toISOString(),
-                        backgroundImage: backgroundImage.value ? { ...backgroundImage.value, element: undefined } : null
+                        backgroundImage: backgroundImage.value ? { ...backgroundImage.value, element: undefined } : null,
+                        refLines: refLines.value,
+                        textAnnotations: textAnnotations.value,
                     };
                     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
                     const url = URL.createObjectURL(blob);
@@ -979,13 +1310,14 @@
                                 saveHistory(); // Save current before overwriting
                                 nodes.value = data.nodes;
                                 edges.value = data.edges;
+                                refLines.value = data.refLines || [];
+                                textAnnotations.value = data.textAnnotations || [];
 
                                 if (data.loadSheet) {
                                     loadSheet.value = data.loadSheet;
                                     if (data.loadSheetColumns) {
                                         loadSheetColumns.value = data.loadSheetColumns;
                                     }
-                                    loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
                                     loadSheetStatus.value = `${loadSheet.value.length} sizes loaded`;
                                     saveLoadSheetToStorage();
                                 }
@@ -1004,6 +1336,8 @@
 
                                 selectedNodes.value.clear();
                                 selectedEdges.value.clear();
+                                selectedRefLines.value.clear();
+                                selectedTexts.value.clear();
                                 recalcAndRender();
                             } else {
                                 alert("Invalid JSON file format");
@@ -1336,6 +1670,8 @@
                         JSON.stringify({
                             nodes: nodes.value,
                             edges: edges.value,
+                            refLines: refLines.value,
+                            textAnnotations: textAnnotations.value,
                         })
                     );
                     if (history.value.length > 20) history.value.shift();
@@ -1346,8 +1682,12 @@
                     const state = JSON.parse(history.value.pop());
                     nodes.value = state.nodes;
                     edges.value = state.edges;
+                    refLines.value = state.refLines || [];
+                    textAnnotations.value = state.textAnnotations || [];
                     selectedNodes.value.clear();
                     selectedEdges.value.clear();
+                    selectedRefLines.value.clear();
+                    selectedTexts.value.clear();
                     recalcAndRender();
                 };
 
@@ -1462,13 +1802,99 @@
                         return;
                     }
 
-                    // DRAGGING SELECTION
-                    if (isDraggingSelection.value && dragStartPositions.value.size > 0) {
-                        // Calculate total delta from start (Screen -> World)
+                    // DRAGGING REF LINE
+                    if (isDraggingRefLine.value && selectedRefLines.value.size > 0) {
                         const dx = (mx - dragStartMouse.value.x) / transform.value.scale;
                         const dy = (my - dragStartMouse.value.y) / transform.value.scale;
 
-                        // Get leader node (primary selection) for snapping reference
+                        const leaderIdx = Array.from(selectedRefLines.value)[0];
+                        const leaderStart = dragStartPositions.value.get(`refline-${leaderIdx}`);
+
+                        if (leaderStart) {
+                            let rtx = leaderStart.x + dx;
+                            let rty = leaderStart.y + dy;
+                            if (snapToGrid.value) {
+                                rtx = Math.round(rtx / 20) * 20;
+                                rty = Math.round(rty / 20) * 20;
+                            }
+                            const snapDx = rtx - leaderStart.x;
+                            const snapDy = rty - leaderStart.y;
+
+                            selectedNodes.value.forEach(idx => {
+                                const start = dragStartPositions.value.get(idx);
+                                if (start) {
+                                    nodes.value[idx].x = start.x + snapDx;
+                                    nodes.value[idx].y = start.y + snapDy;
+                                }
+                            });
+                            selectedRefLines.value.forEach(idx => {
+                                const start = dragStartPositions.value.get(`refline-${idx}`);
+                                if (start) {
+                                    refLines.value[idx].x = start.x + snapDx;
+                                    refLines.value[idx].y = start.y + snapDy;
+                                }
+                            });
+                            selectedTexts.value.forEach(idx => {
+                                const start = dragStartPositions.value.get(`text-${idx}`);
+                                if (start) {
+                                    textAnnotations.value[idx].x = start.x + snapDx;
+                                    textAnnotations.value[idx].y = start.y + snapDy;
+                                }
+                            });
+                        }
+                        render();
+                        return;
+                    }
+
+                    // DRAGGING TEXT ANNOTATION
+                    if (isDraggingTextAnnot.value && selectedTexts.value.size > 0) {
+                        const dx = (mx - dragStartMouse.value.x) / transform.value.scale;
+                        const dy = (my - dragStartMouse.value.y) / transform.value.scale;
+
+                        const leaderIdx = Array.from(selectedTexts.value)[0];
+                        const leaderStart = dragStartPositions.value.get(`text-${leaderIdx}`);
+
+                        if (leaderStart) {
+                            let ttx = leaderStart.x + dx;
+                            let tty = leaderStart.y + dy;
+                            if (snapToGrid.value) {
+                                ttx = Math.round(ttx / 20) * 20;
+                                tty = Math.round(tty / 20) * 20;
+                            }
+                            const snapDx = ttx - leaderStart.x;
+                            const snapDy = tty - leaderStart.y;
+
+                            selectedNodes.value.forEach(idx => {
+                                const start = dragStartPositions.value.get(idx);
+                                if (start) {
+                                    nodes.value[idx].x = start.x + snapDx;
+                                    nodes.value[idx].y = start.y + snapDy;
+                                }
+                            });
+                            selectedRefLines.value.forEach(idx => {
+                                const start = dragStartPositions.value.get(`refline-${idx}`);
+                                if (start) {
+                                    refLines.value[idx].x = start.x + snapDx;
+                                    refLines.value[idx].y = start.y + snapDy;
+                                }
+                            });
+                            selectedTexts.value.forEach(idx => {
+                                const start = dragStartPositions.value.get(`text-${idx}`);
+                                if (start) {
+                                    textAnnotations.value[idx].x = start.x + snapDx;
+                                    textAnnotations.value[idx].y = start.y + snapDy;
+                                }
+                            });
+                        }
+                        render();
+                        return;
+                    }
+
+                    // DRAGGING SELECTION (Nodes)
+                    if (isDraggingSelection.value && dragStartPositions.value.size > 0) {
+                        const dx = (mx - dragStartMouse.value.x) / transform.value.scale;
+                        const dy = (my - dragStartMouse.value.y) / transform.value.scale;
+
                         let leaderId = draggingNode.value;
                         if (leaderId === null || !selectedNodes.value.has(leaderId)) {
                             if (selectedNodes.value.size > 0) {
@@ -1481,20 +1907,17 @@
                         const leaderStart = dragStartPositions.value.get(leaderId);
                         if (!leaderStart) return;
 
-                        // Calculate Target Leader Position
                         let tx = leaderStart.x + dx;
                         let ty = leaderStart.y + dy;
-
                         if (snapToGrid.value) {
                             tx = Math.round(tx / 20) * 20;
                             ty = Math.round(ty / 20) * 20;
                         }
 
-                        // Calculate Effective Delta (Snapped)
                         const effectiveDx = tx - leaderStart.x;
                         const effectiveDy = ty - leaderStart.y;
 
-                        // Apply to all
+                        // Move everything
                         selectedNodes.value.forEach(idx => {
                             const startPos = dragStartPositions.value.get(idx);
                             if (startPos) {
@@ -1502,9 +1925,21 @@
                                 nodes.value[idx].y = startPos.y + effectiveDy;
                             }
                         });
-
-                        lastMouse.value = { x: mx, y: my };
-                        recalcAndRender();
+                        selectedRefLines.value.forEach(idx => {
+                            const start = dragStartPositions.value.get(`refline-${idx}`);
+                            if (start) {
+                                refLines.value[idx].x = start.x + effectiveDx;
+                                refLines.value[idx].y = start.y + effectiveDy;
+                            }
+                        });
+                        selectedTexts.value.forEach(idx => {
+                            const start = dragStartPositions.value.get(`text-${idx}`);
+                            if (start) {
+                                textAnnotations.value[idx].x = start.x + effectiveDx;
+                                textAnnotations.value[idx].y = start.y + effectiveDy;
+                            }
+                        });
+                        render();
                         return;
                     }
 
@@ -1520,6 +1955,8 @@
 
                         selectedNodes.value.clear();
                         selectedEdges.value.clear();
+                        selectedRefLines.value.clear();
+                        selectedTexts.value.clear();
 
                         nodes.value.forEach((n, i) => {
                             if (n.x >= bx && n.x <= bx + bw && n.y >= by && n.y <= by + bh) {
@@ -1534,6 +1971,18 @@
                             const midY = (n1.y + n2.y) / 2;
                             if (midX >= bx && midX <= bx + bw && midY >= by && midY <= by + bh) {
                                 selectedEdges.value.add(i);
+                            }
+                        });
+
+                        refLines.value.forEach((rl, i) => {
+                            if (rl.x >= bx && rl.x <= bx + bw && rl.y >= by && rl.y <= by + bh) {
+                                selectedRefLines.value.add(i);
+                            }
+                        });
+
+                        textAnnotations.value.forEach((ta, i) => {
+                            if (ta.x >= bx && ta.x <= bx + bw && ta.y >= by && ta.y <= by + bh) {
+                                selectedTexts.value.add(i);
                             }
                         });
 
@@ -1589,81 +2038,169 @@
                     if (mode.value === "move" || mode.value === "select") {
                         if (clickedNodeIdx !== -1) {
                             // Node Clicked
+                            const node = nodes.value[clickedNodeIdx];
                             if (e.shiftKey) {
-                                // Toggle Selection
                                 if (selectedNodes.value.has(clickedNodeIdx)) {
                                     selectedNodes.value.delete(clickedNodeIdx);
                                 } else {
                                     selectedNodes.value.add(clickedNodeIdx);
                                 }
                             } else {
-                                // Single Select (unless already selected, then maybe start drag)
-                                // If we click a node that is part of the selection, we DON'T clear, 
-                                // because we might be about to drag the whole group.
                                 if (!selectedNodes.value.has(clickedNodeIdx)) {
                                     selectedNodes.value.clear();
                                     selectedEdges.value.clear();
+                                    selectedRefLines.value.clear();
+                                    selectedTexts.value.clear();
                                     selectedNodes.value.add(clickedNodeIdx);
                                 }
                             }
 
-                            // Drag Initialization (Only in Move Mode)
                             if (mode.value === 'move') {
                                 isDraggingSelection.value = true;
-                                draggingNode.value = clickedNodeIdx; // Leader node for snapping
+                                draggingNode.value = clickedNodeIdx;
+                                dragStartMouse.value = { x: mx, y: my };
+                                dragStartPositions.value.clear();
+                                // Capture ALL selections for unified movement
+                                selectedNodes.value.forEach(id => {
+                                    dragStartPositions.value.set(id, { x: nodes.value[id].x, y: nodes.value[id].y });
+                                });
+                                selectedRefLines.value.forEach(id => {
+                                    dragStartPositions.value.set(`refline-${id}`, { x: refLines.value[id].x, y: refLines.value[id].y });
+                                });
+                                selectedTexts.value.forEach(id => {
+                                    dragStartPositions.value.set(`text-${id}`, { x: textAnnotations.value[id].x, y: textAnnotations.value[id].y });
+                                });
+                            }
+                            recalcAndRender();
+                            return;
+                        }
 
-                                // Capture initial state
+                        // Check Ref Lines
+                        let hitRefIdx = null;
+                        const hitR = 25 / transform.value.scale;
+                        refLines.value.forEach((rl, i) => {
+                            if (Math.hypot(rl.x - w.x, rl.y - w.y) < hitR) hitRefIdx = i;
+                        });
+
+                        if (hitRefIdx !== null) {
+                            if (e.shiftKey) {
+                                if (selectedRefLines.value.has(hitRefIdx)) {
+                                    selectedRefLines.value.delete(hitRefIdx);
+                                } else {
+                                    selectedRefLines.value.add(hitRefIdx);
+                                }
+                            } else {
+                                if (!selectedRefLines.value.has(hitRefIdx)) {
+                                    selectedNodes.value.clear();
+                                    selectedEdges.value.clear();
+                                    selectedRefLines.value.clear();
+                                    selectedTexts.value.clear();
+                                    selectedRefLines.value.add(hitRefIdx);
+                                }
+                            }
+
+                            if (mode.value === 'move') {
+                                isDraggingRefLine.value = true;
                                 dragStartMouse.value = { x: mx, y: my };
                                 dragStartPositions.value.clear();
                                 selectedNodes.value.forEach(id => {
-                                    if (nodes.value[id]) {
-                                        dragStartPositions.value.set(id, { x: nodes.value[id].x, y: nodes.value[id].y });
-                                    }
+                                    dragStartPositions.value.set(id, { x: nodes.value[id].x, y: nodes.value[id].y });
                                 });
-                            } else {
-                                isDraggingSelection.value = false;
-                                draggingNode.value = null;
+                                selectedRefLines.value.forEach(id => {
+                                    dragStartPositions.value.set(`refline-${id}`, { x: refLines.value[id].x, y: refLines.value[id].y });
+                                });
+                                selectedTexts.value.forEach(id => {
+                                    dragStartPositions.value.set(`text-${id}`, { x: textAnnotations.value[id].x, y: textAnnotations.value[id].y });
+                                });
                             }
-                        } else {
-                            // Empty Space or Edge
+                            recalcAndRender();
+                            return;
+                        }
 
-                            // Check Edge Click
-                            let minDist = 10 / transform.value.scale;
-                            let foundEdgeIdx = -1;
+                        // Check Text Annotations
+                        let hitTxtIdx = null;
+                        const hitR2 = 25 / transform.value.scale;
+                        textAnnotations.value.forEach((ta, i) => {
+                            if (Math.hypot(ta.x - w.x, ta.y - w.y) < hitR2) hitTxtIdx = i;
+                        });
 
-                            edges.value.forEach((edge, idx) => {
-                                const n1 = nodes.value[edge.from];
-                                const n2 = nodes.value[edge.to];
-                                const d = getDistToEdge(w.x, w.y, n1.x, n1.y, n2.x, n2.y);
-                                if (d < minDist) {
-                                    minDist = d;
-                                    foundEdgeIdx = idx;
-                                }
-                            });
-
-                            if (foundEdgeIdx !== -1) {
-                                if (e.shiftKey) {
-                                    if (selectedEdges.value.has(foundEdgeIdx)) {
-                                        selectedEdges.value.delete(foundEdgeIdx);
-                                    } else {
-                                        selectedEdges.value.add(foundEdgeIdx);
-                                    }
+                        if (hitTxtIdx !== null) {
+                            if (e.shiftKey) {
+                                if (selectedTexts.value.has(hitTxtIdx)) {
+                                    selectedTexts.value.delete(hitTxtIdx);
                                 } else {
+                                    selectedTexts.value.add(hitTxtIdx);
+                                }
+                            } else {
+                                if (!selectedTexts.value.has(hitTxtIdx)) {
                                     selectedNodes.value.clear();
                                     selectedEdges.value.clear();
+                                    selectedRefLines.value.clear();
+                                    selectedTexts.value.clear();
+                                    selectedTexts.value.add(hitTxtIdx);
+                                }
+                            }
+
+                            if (mode.value === 'move') {
+                                isDraggingTextAnnot.value = true;
+                                dragStartMouse.value = { x: mx, y: my };
+                                dragStartPositions.value.clear();
+                                selectedNodes.value.forEach(id => {
+                                    dragStartPositions.value.set(id, { x: nodes.value[id].x, y: nodes.value[id].y });
+                                });
+                                selectedRefLines.value.forEach(id => {
+                                    dragStartPositions.value.set(`refline-${id}`, { x: refLines.value[id].x, y: refLines.value[id].y });
+                                });
+                                selectedTexts.value.forEach(id => {
+                                    dragStartPositions.value.set(`text-${id}`, { x: textAnnotations.value[id].x, y: textAnnotations.value[id].y });
+                                });
+                            }
+                            recalcAndRender();
+                            return;
+                        }
+
+                        // Check Edge Click
+                        let minDist = 10 / transform.value.scale;
+                        let foundEdgeIdx = -1;
+                        edges.value.forEach((edge, idx) => {
+                            const n1 = nodes.value[edge.from];
+                            const n2 = nodes.value[edge.to];
+                            const d = getDistToEdge(w.x, w.y, n1.x, n1.y, n2.x, n2.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                foundEdgeIdx = idx;
+                            }
+                        });
+
+                        if (foundEdgeIdx !== -1) {
+                            if (e.shiftKey) {
+                                if (selectedEdges.value.has(foundEdgeIdx)) {
+                                    selectedEdges.value.delete(foundEdgeIdx);
+                                } else {
                                     selectedEdges.value.add(foundEdgeIdx);
                                 }
                             } else {
-                                // Empty space -> Box Select
-                                if (!e.shiftKey) {
-                                    selectedNodes.value.clear();
-                                    selectedEdges.value.clear();
-                                }
-                                if (mode.value === "select") {
-                                    selectionBox.value = { startX: w.x, startY: w.y, endX: w.x, endY: w.y, active: true };
-                                }
+                                selectedNodes.value.clear();
+                                selectedEdges.value.clear();
+                                selectedRefLines.value.clear();
+                                selectedTexts.value.clear();
+                                selectedEdges.value.add(foundEdgeIdx);
                             }
+                            recalcAndRender();
+                            return;
                         }
+
+                        // Empty Space
+                        if (!e.shiftKey) {
+                            selectedNodes.value.clear();
+                            selectedEdges.value.clear();
+                            selectedRefLines.value.clear();
+                            selectedTexts.value.clear();
+                        }
+                        if (mode.value === "select") {
+                            selectionBox.value = { startX: w.x, startY: w.y, endX: w.x, endY: w.y, active: true };
+                        }
+                        recalcAndRender();
                     }
 
                     // ADD TERMINAL
@@ -1856,19 +2393,132 @@
                             if (w.x >= bx && w.x <= bx + bw && w.y >= by && w.y <= by + bh) {
                                 isImageSelected.value = true;
                                 isDraggingImage.value = true;
-                                // Use dragStartMouse from multi-select logic or create new?
-                                // Reuse dragStartMouse is fine.
                                 dragStartMouse.value = { x: mx, y: my };
-                                dragStartPositions.value.clear(); // not used for image but good to clear
-                                // Store initial image pos in dragStartPositions with key 'image'?
-                                // No, just use refs or a temp logic.
-                                // Start Pos
+                                dragStartPositions.value.clear();
                                 dragStartPositions.value.set('image', { x: bx, y: by });
                             } else {
                                 isImageSelected.value = false;
                             }
                         }
-                    } else {
+                    }
+
+                    // REFLINE MODE
+                    else if (mode.value === "refline") {
+                        // Hit-test existing ref lines first for selection/drag
+                        let hitIdx = null;
+                        const hitR = 20 / transform.value.scale;
+                        refLines.value.forEach((rl, i) => {
+                            if (Math.hypot(rl.x - w.x, rl.y - w.y) < hitR) {
+                                hitIdx = i;
+                            }
+                        });
+
+                        if (hitIdx !== null) {
+                            if (e.shiftKey) {
+                                if (selectedRefLines.value.has(hitIdx)) {
+                                    selectedRefLines.value.delete(hitIdx);
+                                } else {
+                                    selectedRefLines.value.add(hitIdx);
+                                }
+                            } else {
+                                if (!selectedRefLines.value.has(hitIdx)) {
+                                    selectedRefLines.value.clear();
+                                    selectedTexts.value.clear();
+                                    selectedNodes.value.clear();
+                                    selectedEdges.value.clear();
+                                    selectedRefLines.value.add(hitIdx);
+                                }
+                            }
+                            isDraggingRefLine.value = true;
+                            dragStartMouse.value = { x: mx, y: my };
+                            dragStartPositions.value.clear();
+                            // Unified drag init
+                            selectedNodes.value.forEach(id => {
+                                dragStartPositions.value.set(id, { x: nodes.value[id].x, y: nodes.value[id].y });
+                            });
+                            selectedRefLines.value.forEach(id => {
+                                dragStartPositions.value.set(`refline-${id}`, { x: refLines.value[id].x, y: refLines.value[id].y });
+                            });
+                            selectedTexts.value.forEach(id => {
+                                dragStartPositions.value.set(`text-${id}`, { x: textAnnotations.value[id].x, y: textAnnotations.value[id].y });
+                            });
+                        } else {
+                            saveHistory();
+                            const newRl = {
+                                name: `REF-${refLines.value.length + 1}`,
+                                color: '#ff8c42',
+                                orientation: 'horizontal',
+                                x: snapToGrid.value ? Math.round(w.x / 20) * 20 : w.x,
+                                y: snapToGrid.value ? Math.round(w.y / 20) * 20 : w.y,
+                                length: 400,
+                            };
+                            refLines.value.push(newRl);
+                            selectedRefLines.value.clear();
+                            selectedRefLines.value.add(refLines.value.length - 1);
+                            selectedTexts.value.clear();
+                            selectedNodes.value.clear();
+                            selectedEdges.value.clear();
+                        }
+                    }
+
+                    // TEXT ANNOTATION MODE
+                    else if (mode.value === "text") {
+                        let hitTxtIdx = null;
+                        const hitR2 = 20 / transform.value.scale;
+                        textAnnotations.value.forEach((ta, i) => {
+                            if (Math.hypot(ta.x - w.x, ta.y - w.y) < hitR2) {
+                                hitTxtIdx = i;
+                            }
+                        });
+
+                        if (hitTxtIdx !== null) {
+                            if (e.shiftKey) {
+                                if (selectedTexts.value.has(hitTxtIdx)) {
+                                    selectedTexts.value.delete(hitTxtIdx);
+                                } else {
+                                    selectedTexts.value.add(hitTxtIdx);
+                                }
+                            } else {
+                                if (!selectedTexts.value.has(hitTxtIdx)) {
+                                    selectedTexts.value.clear();
+                                    selectedRefLines.value.clear();
+                                    selectedNodes.value.clear();
+                                    selectedEdges.value.clear();
+                                    selectedTexts.value.add(hitTxtIdx);
+                                }
+                            }
+                            isDraggingTextAnnot.value = true;
+                            dragStartMouse.value = { x: mx, y: my };
+                            dragStartPositions.value.clear();
+                            // Unified drag init
+                            selectedNodes.value.forEach(id => {
+                                dragStartPositions.value.set(id, { x: nodes.value[id].x, y: nodes.value[id].y });
+                            });
+                            selectedRefLines.value.forEach(id => {
+                                dragStartPositions.value.set(`refline-${id}`, { x: refLines.value[id].x, y: refLines.value[id].y });
+                            });
+                            selectedTexts.value.forEach(id => {
+                                dragStartPositions.value.set(`text-${id}`, { x: textAnnotations.value[id].x, y: textAnnotations.value[id].y });
+                            });
+                        } else {
+                            saveHistory();
+                            const newTa = {
+                                content: 'Text',
+                                color: '#f4f4f4',
+                                size: 14,
+                                x: snapToGrid.value ? Math.round(w.x / 20) * 20 : w.x,
+                                y: snapToGrid.value ? Math.round(w.y / 20) * 20 : w.y,
+                            };
+                            textAnnotations.value.push(newTa);
+                            selectedTexts.value.clear();
+                            selectedTexts.value.add(textAnnotations.value.length - 1);
+                            selectedRefLines.value.clear();
+                            selectedNodes.value.clear();
+                            selectedEdges.value.clear();
+                        }
+                    }
+
+                    else {
                         // If switching modes, deselect image?
                         isImageSelected.value = false;
                     }
@@ -1887,6 +2537,8 @@
                     draggingNode.value = null;
                     isDraggingSelection.value = false;
                     isDraggingImage.value = false;
+                    isDraggingRefLine.value = false;
+                    isDraggingTextAnnot.value = false;
                     selectionBox.value.active = false;
                 };
 
@@ -2138,6 +2790,82 @@
                         }
                     });
 
+                    // Reference Lines
+                    refLines.value.forEach((rl, i) => {
+                        const isSelRL = selectedRefLines.value.has(i);
+                        ctx.save();
+                        ctx.strokeStyle = rl.color || '#ff8c42';
+                        ctx.lineWidth = (1.5 + (isSelRL ? 1 : 0)) / transform.value.scale;
+                        ctx.setLineDash([8 / transform.value.scale, 5 / transform.value.scale]);
+
+                        if (rl.orientation === 'vertical') {
+                            ctx.beginPath();
+                            ctx.moveTo(rl.x, rl.y);
+                            ctx.lineTo(rl.x, rl.y + (rl.length || 400));
+                            ctx.stroke();
+                        } else {
+                            ctx.beginPath();
+                            ctx.moveTo(rl.x, rl.y);
+                            ctx.lineTo(rl.x + (rl.length || 400), rl.y);
+                            ctx.stroke();
+                        }
+                        ctx.setLineDash([]);
+
+                        // Circle marker at origin
+                        ctx.beginPath();
+                        ctx.arc(rl.x, rl.y, 5 / transform.value.scale, 0, Math.PI * 2);
+                        ctx.fillStyle = rl.color || '#ff8c42';
+                        ctx.fill();
+
+                        // Selection highlight ring
+                        if (isSelRL) {
+                            ctx.beginPath();
+                            ctx.arc(rl.x, rl.y, 9 / transform.value.scale, 0, Math.PI * 2);
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 1.5 / transform.value.scale;
+                            ctx.stroke();
+                        }
+
+                        // Name label
+                        const labelFontSize = Math.max(10, 12) / transform.value.scale;
+                        ctx.font = `bold ${labelFontSize}px "Inter"`;
+                        ctx.fillStyle = rl.color || '#ff8c42';
+                        ctx.textAlign = 'left';
+                        if (rl.orientation === 'vertical') {
+                            // Place label to the right, near top
+                            ctx.fillText(rl.name || '', rl.x + 8 / transform.value.scale, rl.y - 8 / transform.value.scale);
+                        } else {
+                            // Place label above, slightly right of the circle
+                            ctx.fillText(rl.name || '', rl.x + 12 / transform.value.scale, rl.y - 8 / transform.value.scale);
+                        }
+                        ctx.restore();
+                    });
+
+                    // Text Annotations
+                    textAnnotations.value.forEach((ta, i) => {
+                        const isSelTA = selectedTexts.value.has(i);
+                        ctx.save();
+                        const fontSize = (ta.size || 14) / transform.value.scale;
+                        ctx.font = `${fontSize}px "Inter"`;
+                        ctx.fillStyle = ta.color || '#f4f4f4';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(ta.content || '', ta.x, ta.y);
+
+                        // Selection highlight
+                        if (isSelTA) {
+                            const metrics = ctx.measureText(ta.content || '');
+                            const tw = metrics.width;
+                            const th = fontSize;
+                            ctx.strokeStyle = '#ff8c42';
+                            ctx.lineWidth = 1 / transform.value.scale;
+                            ctx.setLineDash([4 / transform.value.scale, 3 / transform.value.scale]);
+                            ctx.strokeRect(ta.x - 2 / transform.value.scale, ta.y - th / 2 - 2 / transform.value.scale, tw + 4 / transform.value.scale, th + 4 / transform.value.scale);
+                            ctx.setLineDash([]);
+                        }
+                        ctx.restore();
+                    });
+
                     // Selection Box
                     if (selectionBox.value.active) {
                         const bx = Math.min(selectionBox.value.startX, selectionBox.value.endX);
@@ -2155,15 +2883,19 @@
                         ctx.restore();
                     }
 
-                    ctx.restore(); // Restore Identity for any UI overlays? 
+                    ctx.restore(); // Restore Identity for any UI overlays?
                     // Currently no screen-space UI overlays in canvas path.
                 };
 
                 const clearAll = () => {
                     nodes.value = [];
                     edges.value = [];
+                    refLines.value = [];
+                    textAnnotations.value = [];
                     selectedNodes.value.clear();
                     selectedEdges.value.clear();
+                    selectedRefLines.value.clear();
+                    selectedTexts.value.clear();
                     backgroundImage.value = null;
                     isImageSelected.value = false;
                     render();
@@ -2285,6 +3017,22 @@
                     showSettingsDialog,
                     resetSettings,
                     applySettings,
+
+                    // Ref Lines
+                    refLines,
+                    selectedRefLines,
+                    singleSelectedRefLine,
+                    allSelectedAreRefLines,
+                    applyBulkRefLineProperty,
+                    deleteRefLine,
+
+                    // Text Annotations
+                    textAnnotations,
+                    selectedTexts,
+                    singleSelectedText,
+                    allSelectedAreTexts,
+                    applyBulkTextProperty,
+                    deleteTextAnnotation,
                 };
             },
         }).mount("#app");
