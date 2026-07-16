@@ -589,7 +589,7 @@
         <div class="h-6 w-px bg-border-low hidden md:block"></div>
 
         <div class="flex items-center gap-2">
-            <span class="text-[10px] text-text-muted font-mono uppercase tracking-widest mr-2">Active Hydraulic Mode:</span>
+            <span class="text-[10px] text-text-muted font-mono uppercase tracking-widest mr-2">Active Mode:</span>
             <div class="flex rounded-sm bg-black p-1 border border-border-low max-w-full overflow-x-auto scroll-container">
                 <button v-for="mode in sizeChart.modes" :key="mode.id" @click="setActiveMode(mode.id)"
                 :class="activeModeId === mode.id ? 'bg-vercel-blue text-white font-semibold' : 'text-text-muted hover:text-white'"
