@@ -370,12 +370,132 @@
     </div>
 </header>
 
+<!-- SIZING CHART EDITOR -->
+<div class="p-8 border-b border-border-low bg-gradient-to-r from-black to-[#050505]">
+    <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+        <div class="flex flex-wrap items-center gap-4">
+            <button @click="toggleChartEditor"
+            class="px-4 py-2 bg-neutral-900 border border-border-med hover:border-vercel-cyan hover:text-vercel-cyan text-xs uppercase tracking-wider font-semibold transition-all rounded-sm flex items-center gap-2 shadow-inner">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            {{ showChartEditor ? 'Hide Sizing Flow Dataset' : 'View or Edit Sizing Catalog Grid' }}
+        </button>
+
+        <div class="h-6 w-px bg-border-low hidden md:block"></div>
+
+        <div class="flex items-center gap-2">
+            <span class="text-[10px] text-text-muted font-mono uppercase tracking-widest mr-2">Active Mode:</span>
+            <div class="flex rounded-sm bg-black p-1 border border-border-low max-w-full overflow-x-auto scroll-container">
+                <button v-for="mode in sizeChart.modes" :key="mode.id" @click="setActiveMode(mode.id)"
+                :class="activeModeId === mode.id ? 'bg-vercel-blue text-white font-semibold' : 'text-text-muted hover:text-white'"
+                class="px-3 py-1 text-[11px] uppercase tracking-wider transition-all duration-150 rounded-xs shrink-0">
+                {{ mode.label }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<div v-if="showChartEditor" class="flex items-center gap-2 flex-wrap mt-4 lg:mt-0">
+    <button @click="openPasteModal"
+    class="px-3 py-1.5 border border-border-med bg-neutral-900 text-[10px] uppercase tracking-wider text-vercel-cyan hover:border-vercel-cyan transition-all rounded-xs flex items-center gap-1.5">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+    Paste from Excel
+</button>
+<button @click="resetCatalogChartToDefault"
+class="px-3 py-1.5 border border-red-900/60 bg-red-950/20 text-[10px] uppercase tracking-wider text-red-400 hover:bg-red-900 transition-all rounded-xs flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+Reset Catalog
+</button>
+<button @click="addCatalogColumn"
+class="px-3 py-1.5 border border-border-med bg-neutral-900 text-[10px] uppercase tracking-wider text-text-main hover:border-vercel-blue transition-all rounded-xs flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+Add Velocity Column
+</button>
+</div>
+</div>
+
+<!-- CHART EDITOR TABLE -->
+<div v-if="showChartEditor" class="mt-6 border border-border-low bg-card-bg p-6 rounded-sm space-y-4 transition-all duration-200">
+    <div class="flex justify-between items-start">
+        <div>
+            <h4 class="text-xs text-vercel-cyan uppercase font-semibold tracking-wider">Dynamic Sizing Blueprint Mapping</h4>
+            <p class="text-xs text-text-muted mt-1">Configure nominal names, insert entries, or configure cell flow threshold targets below.</p>
+        </div>
+        <button @click="addCatalogRowAtBottom"
+        class="px-3 py-1.5 border border-border-med bg-black text-[10px] uppercase tracking-wider text-text-main hover:border-vercel-blue transition-all rounded-xs flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Append Row
+    </button>
+</div>
+
+<div class="overflow-x-auto border border-border-low rounded-sm scroll-container">
+    <table class="w-full text-left font-mono text-xs border-collapse table-fixed min-w-[950px]">
+        <thead>
+            <tr class="bg-black border-b border-border-low text-[10px] uppercase tracking-wider text-text-muted">
+                <th class="p-3 w-32 border-r border-border-low max-w-[128px] overflow-hidden truncate">Nominal Size (&quot;)</th>
+                <th v-for="(mode, colIdx) in sizeChart.modes" :key="mode.id" class="p-3 relative group w-40 max-w-[160px] overflow-hidden truncate" :class="{'text-vercel-blue bg-vercel-blue/5': mode.id === activeModeId}">
+                    <div class="flex items-center justify-between gap-1">
+                        <input type="text" v-model="mode.label" @change="saveToStorage"
+                        class="bg-transparent border-b border-transparent focus:border-vercel-blue outline-none text-text-main text-xs font-mono font-bold tracking-tight w-full py-0.5" />
+                        <button @click="removeCatalogColumn(colIdx)"
+                        class="icon-btn danger opacity-0 group-hover:opacity-100 transition-opacity text-[11px] pl-1"
+                        title="Delete Column">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </th>
+                <th class="p-3 text-center w-36 max-w-[144px] text-[9px]">Row Modifications</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="(row, rowIdx) in sizeChart.rows" :key="row.id" class="border-b border-border-low hover:bg-black/40 transition-colors duration-150 bg-card-bg">
+                <td class="p-2 border-r border-border-low bg-black/20 text-center w-32 max-w-[128px]">
+                    <input type="text" v-model="row.size" @input="saveToStorage" placeholder='Size'
+                    class="text-center bg-black border border-border-low px-2 py-1 text-text-main font-semibold focus:border-vercel-cyan focus:outline-none rounded-xs w-full" />
+                </td>
+
+                <td v-for="mode in sizeChart.modes" :key="row.id + '-' + mode.id" class="p-2 w-40 max-w-[160px]" :class="{'bg-vercel-blue/5': mode.id === activeModeId}">
+                    <input type="number" step="any" v-model.number="row.values[mode.id]" @input="saveToStorage"
+                    class="bg-black/80 border border-border-low px-2 py-1 text-text-main focus:border-vercel-cyan focus:outline-none transition-colors rounded-xs w-full" />
+                </td>
+
+                <td class="p-2 align-middle text-center w-36 max-w-[144px]">
+                    <div class="flex items-center justify-center gap-1.5">
+                        <button @click="insertCatalogRow(rowIdx, 'above')" class="icon-btn sunset" title="Insert Above">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                        </button>
+                        <button @click="insertCatalogRow(rowIdx, 'below')" class="icon-btn sunset" title="Insert Below">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <button @click="removeCatalogRow(rowIdx)" class="icon-btn danger" title="Delete Row">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+</div>
+</div>
+
 <main class="flex-grow">
     <!-- SECTION 1 + 2: UNITS + FLOOR BOARD -->
 <div class="grid grid-cols-1 xl:grid-cols-12 border-b border-border-low items-stretch">
 
     <div class="xl:col-span-3 border-b xl:border-b-0 xl:border-r border-border-low p-8 flex flex-col min-h-[400px] xl:h-auto">
+    <!-- Quick Size Box -->
+    <div class="flex items-center gap-4 bg-black/40 p-3 rounded-sm border border-border-low mb-6">
+        <span class="text-xs text-text-muted font-mono uppercase tracking-wider">Quick Size</span>
+        <input type="number" step="any" v-model.number="quickGpmInput" 
+            placeholder="Enter GPM" 
+            class="bg-black border border-border-low px-3 py-1.5 text-text-main w-32 focus:border-vercel-cyan outline-none rounded-xs font-mono" />
+        <span class="text-xs text-text-muted">➜</span>
+        <span class="font-mono text-sm text-vercel-cyan font-semibold">{{ quickPipeSize }}</span>
+        <span class="text-xs text-text-muted">@ {{ getActiveModeLabel() }}</span>
+    </div>
     <div class="flex items-center justify-between mb-1 shrink-0">
+
+
         <div class="uppercase tracking-[0.15em] text-[0.7rem] text-vercel-cyan font-semibold">
             01. Cooling Units Catalog
         </div>
@@ -576,113 +696,7 @@
     </div>
 </div>
 
-<!-- SIZING CHART EDITOR -->
-<div class="p-8 border-b border-border-low bg-gradient-to-r from-black to-[#050505]">
-    <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
-        <div class="flex flex-wrap items-center gap-4">
-            <button @click="toggleChartEditor"
-            class="px-4 py-2 bg-neutral-900 border border-border-med hover:border-vercel-cyan hover:text-vercel-cyan text-xs uppercase tracking-wider font-semibold transition-all rounded-sm flex items-center gap-2 shadow-inner">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            {{ showChartEditor ? 'Hide Sizing Flow Dataset' : 'View or Edit Sizing Catalog Grid' }}
-        </button>
 
-        <div class="h-6 w-px bg-border-low hidden md:block"></div>
-
-        <div class="flex items-center gap-2">
-            <span class="text-[10px] text-text-muted font-mono uppercase tracking-widest mr-2">Active Mode:</span>
-            <div class="flex rounded-sm bg-black p-1 border border-border-low max-w-full overflow-x-auto scroll-container">
-                <button v-for="mode in sizeChart.modes" :key="mode.id" @click="setActiveMode(mode.id)"
-                :class="activeModeId === mode.id ? 'bg-vercel-blue text-white font-semibold' : 'text-text-muted hover:text-white'"
-                class="px-3 py-1 text-[11px] uppercase tracking-wider transition-all duration-150 rounded-xs shrink-0">
-                {{ mode.label }}
-            </button>
-        </div>
-    </div>
-</div>
-
-<div v-if="showChartEditor" class="flex items-center gap-2 flex-wrap mt-4 lg:mt-0">
-    <button @click="openPasteModal"
-    class="px-3 py-1.5 border border-border-med bg-neutral-900 text-[10px] uppercase tracking-wider text-vercel-cyan hover:border-vercel-cyan transition-all rounded-xs flex items-center gap-1.5">
-    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
-    Paste from Excel
-</button>
-<button @click="resetCatalogChartToDefault"
-class="px-3 py-1.5 border border-red-900/60 bg-red-950/20 text-[10px] uppercase tracking-wider text-red-400 hover:bg-red-900 transition-all rounded-xs flex items-center gap-1.5">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-Reset Catalog
-</button>
-<button @click="addCatalogColumn"
-class="px-3 py-1.5 border border-border-med bg-neutral-900 text-[10px] uppercase tracking-wider text-text-main hover:border-vercel-blue transition-all rounded-xs flex items-center gap-1.5">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-Add Velocity Column
-</button>
-</div>
-</div>
-
-<!-- CHART EDITOR TABLE -->
-<div v-if="showChartEditor" class="mt-6 border border-border-low bg-card-bg p-6 rounded-sm space-y-4 transition-all duration-200">
-    <div class="flex justify-between items-start">
-        <div>
-            <h4 class="text-xs text-vercel-cyan uppercase font-semibold tracking-wider">Dynamic Sizing Blueprint Mapping</h4>
-            <p class="text-xs text-text-muted mt-1">Configure nominal names, insert entries, or configure cell flow threshold targets below.</p>
-        </div>
-        <button @click="addCatalogRowAtBottom"
-        class="px-3 py-1.5 border border-border-med bg-black text-[10px] uppercase tracking-wider text-text-main hover:border-vercel-blue transition-all rounded-xs flex items-center gap-1.5">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Append Row
-    </button>
-</div>
-
-<div class="overflow-x-auto border border-border-low rounded-sm scroll-container">
-    <table class="w-full text-left font-mono text-xs border-collapse table-fixed min-w-[950px]">
-        <thead>
-            <tr class="bg-black border-b border-border-low text-[10px] uppercase tracking-wider text-text-muted">
-                <th class="p-3 w-32 border-r border-border-low max-w-[128px] overflow-hidden truncate">Nominal Size (&quot;)</th>
-                <th v-for="(mode, colIdx) in sizeChart.modes" :key="mode.id" class="p-3 relative group w-40 max-w-[160px] overflow-hidden truncate" :class="{'text-vercel-blue bg-vercel-blue/5': mode.id === activeModeId}">
-                    <div class="flex items-center justify-between gap-1">
-                        <input type="text" v-model="mode.label" @change="saveToStorage"
-                        class="bg-transparent border-b border-transparent focus:border-vercel-blue outline-none text-text-main text-xs font-mono font-bold tracking-tight w-full py-0.5" />
-                        <button @click="removeCatalogColumn(colIdx)"
-                        class="icon-btn danger opacity-0 group-hover:opacity-100 transition-opacity text-[11px] pl-1"
-                        title="Delete Column">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-            </th>
-            <th class="p-3 text-center w-36 max-w-[144px] text-[9px]">Row Modifications</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr v-for="(row, rowIdx) in sizeChart.rows" :key="row.id" class="border-b border-border-low hover:bg-black/40 transition-colors duration-150 bg-card-bg">
-            <td class="p-2 border-r border-border-low bg-black/20 text-center w-32 max-w-[128px]">
-                <input type="text" v-model="row.size" @input="saveToStorage" placeholder='Size'
-                class="text-center bg-black border border-border-low px-2 py-1 text-text-main font-semibold focus:border-vercel-cyan focus:outline-none rounded-xs w-full" />
-            </td>
-
-            <td v-for="mode in sizeChart.modes" :key="row.id + '-' + mode.id" class="p-2 w-40 max-w-[160px]" :class="{'bg-vercel-blue/5': mode.id === activeModeId}">
-                <input type="number" step="any" v-model.number="row.values[mode.id]" @input="saveToStorage"
-                class="bg-black/80 border border-border-low px-2 py-1 text-text-main focus:border-vercel-cyan focus:outline-none transition-colors rounded-xs w-full" />
-            </td>
-
-            <td class="p-2 align-middle text-center w-36 max-w-[144px]">
-                <div class="flex items-center justify-center gap-1.5">
-                    <button @click="insertCatalogRow(rowIdx, 'above')" class="icon-btn sunset" title="Insert Above">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
-                    </button>
-                    <button @click="insertCatalogRow(rowIdx, 'below')" class="icon-btn sunset" title="Insert Below">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    <button @click="removeCatalogRow(rowIdx)" class="icon-btn danger" title="Delete Row">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    </tbody>
-</table>
-</div>
-</div>
-</div>
 
 <!-- 03 + 04: TABLES -->
 <div class="p-8 space-y-16">
@@ -1083,6 +1097,7 @@ Add Velocity Column
             const activeModeId = ref("m3");
             const showChartEditor = ref(false);
             const projectName = ref("");
+            const quickGpmInput = ref(0);   // or ref(null) if you prefer
 
             // --- Toast system ---
             const toasts = ref([]);
@@ -1157,6 +1172,12 @@ Add Velocity Column
                     if (!unitNameSet.value.has(tag)) missing.push(tag);
                 });
                 return missing;
+            });
+
+            const quickPipeSize = computed(() => {
+                const gpm = parseFloat(quickGpmInput.value);
+                if (!gpm || gpm <= 0) return '—';
+                return computePipeSize(gpm);
             });
 
             // --- STORAGE ---
@@ -1922,7 +1943,9 @@ Add Velocity Column
                 addToast,
                 removeToast,
                 showConfirm,
-                topmostUnitIndexPerRiser
+                topmostUnitIndexPerRiser,
+                quickGpmInput,
+                quickPipeSize
             };
         }
     }).mount("#app");
