@@ -1008,7 +1008,8 @@ v-html="dragState.ghostHTML">
         computed,
         onMounted,
         nextTick,
-        onUnmounted
+        onUnmounted,
+        reactive
     } = Vue;
 
     const getDefaultChartData = () => ({
@@ -1222,9 +1223,9 @@ v-html="dragState.ghostHTML">
             function restoreHistory(index) {
                 if (index < 0 || index >= history.value.length) return;
                 const snap = history.value[index];
-                coolingUnits.value = JSON.parse(JSON.stringify(snap.coolingUnits));
+                coolingUnits.value = JSON.parse(JSON.stringify(snap.coolingUnits)).map(u => reactive(u));
                 riserNames.value = JSON.parse(JSON.stringify(snap.riserNames));
-                floors.value = JSON.parse(JSON.stringify(snap.floors));
+                floors.value = JSON.parse(JSON.stringify(snap.floors)).map(f => reactive(f));
                 historyIndex.value = index;
                 saveToStorage();
                 selectedRange.value = null;
@@ -1436,13 +1437,12 @@ v-html="dragState.ghostHTML">
                     return;
                 }
                 if (unitsPasteReplace.value) {
-                    coolingUnits.value = parsed.map((p, idx) => ({ id: String(Date.now() + idx), ...p }));
+                    coolingUnits.value = parsed.map((p, idx) => reactive({ id: String(Date.now() + idx), ...p }));
                 } else {
                     const existingNames = new Set(coolingUnits.value.map(u => u.name.trim()));
                     for (let p of parsed) {
                         if (!existingNames.has(p.name)) {
-                            coolingUnits.value.push({ id: String(Date.now() + Math.random()), name: p.name,
-                                gpm: p.gpm });
+                            coolingUnits.value.push(reactive({ id: String(Date.now() + Math.random()), name: p.name, gpm: p.gpm }));
                             existingNames.add(p.name);
                         }
                     }
@@ -1495,11 +1495,11 @@ v-html="dragState.ghostHTML">
                         const val = (row.values[i] !== undefined) ? row.values[i] : '';
                         rowData.push(val);
                     }
-                    newFloors.push({
+                    newFloors.push(reactive({
                         id: `floor-${Date.now()}-${Math.random()}`,
                         name: row.floorName,
                         risers: rowData
-                    });
+                    }));
                 }
 
                 if (floorPasteReplace.value) {
@@ -1524,11 +1524,11 @@ v-html="dragState.ghostHTML">
                             for (let i = 0; i < riserNames.value.length; i++) {
                                 riserArray.push(newFloor.risers[i] || '');
                             }
-                            floors.value.push({
+                            floors.value.push(reactive({
                                 id: `floor-${Date.now()}-${Math.random()}`,
                                 name: newFloor.name,
                                 risers: riserArray
-                            });
+                            }));
                             existingFloorNames.add(newFloor.name);
                         }
                     }
@@ -1669,9 +1669,13 @@ v-html="dragState.ghostHTML">
                     try {
                         const schema = JSON.parse(e.target.result);
                         if (schema.projectName) projectName.value = schema.projectName;
-                        if (schema.coolingUnits) coolingUnits.value = schema.coolingUnits;
+                        if (schema.coolingUnits) {
+                            coolingUnits.value = schema.coolingUnits.map(u => reactive(u));
+                        }
+                        if (schema.floors) {
+                            floors.value = schema.floors.map(f => reactive(f));
+                        }
                         if (schema.riserNames) riserNames.value = schema.riserNames;
-                        if (schema.floors) floors.value = schema.floors;
                         if (schema.sizeChart) sizeChart.value = schema.sizeChart;
                         if (schema.activeModeId) activeModeId.value = schema.activeModeId;
                         saveToStorage();
@@ -1760,7 +1764,7 @@ v-html="dragState.ghostHTML">
 
             // --- Structural Actions ---
             const addCoolingUnit = () => {
-                coolingUnits.value.push({ id: Date.now().toString(), name: "", gpm: 0 });
+                coolingUnits.value.push(reactive({ id: Date.now().toString(), name: "", gpm: 0 }));
                 saveToStorage();
                 addToast('Added new unit', 'success');
             };
@@ -1774,13 +1778,14 @@ v-html="dragState.ghostHTML">
 
             const addFloorRow = () => {
                 const riserArray = new Array(riserNames.value.length).fill('');
-                floors.value.push({ id: Date.now().toString(), name: "", risers: riserArray });
+                floors.value.push(reactive({ id: Date.now().toString(), name: "", risers: riserArray }));
                 saveToStorage();
                 addToast('Floor added', 'success');
             };
+
             const insertFloorAbove = (index) => {
                 const riserArray = new Array(riserNames.value.length).fill('');
-                floors.value.splice(index, 0, { id: Date.now().toString(), name: "", risers: riserArray });
+                floors.value.splice(index, 0, reactive({ id: Date.now().toString(), name: "", risers: riserArray }));
                 saveToStorage();
                 addToast('Floor inserted', 'success');
             };
@@ -2238,7 +2243,9 @@ v-html="dragState.ghostHTML">
                         for (let c = 0; c < numCols; c++) {
                             const colIdx = anchorCol + c;
                             if (colIdx < floor.risers.length) {
+
                                 floor.risers[colIdx] = data[r][c] || '';
+
                             }
                         }
                     }
@@ -2416,9 +2423,15 @@ v-html="dragState.ghostHTML">
                 const savedModeId = localStorage.getItem("rpro_mode_id");
                 const savedProject = localStorage.getItem("rpro_project");
 
-                if (savedUnits) coolingUnits.value = JSON.parse(savedUnits);
+                if (savedUnits) {
+                    const parsed = JSON.parse(savedUnits);
+                    coolingUnits.value = parsed.map(u => reactive(u));
+                }
                 if (savedRisers) riserNames.value = JSON.parse(savedRisers);
-                if (savedFloors) floors.value = JSON.parse(savedFloors);
+                if (savedFloors) {
+                    const parsed = JSON.parse(savedFloors);
+                    floors.value = parsed.map(f => reactive(f));
+                }
                 if (savedChart) sizeChart.value = JSON.parse(savedChart);
                 if (savedModeId) activeModeId.value = savedModeId;
                 if (savedProject) projectName.value = savedProject;
