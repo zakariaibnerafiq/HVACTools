@@ -431,7 +431,7 @@
                                 class="w-full text-left font-mono text-xs bg-[#0d0d0d]/60 border border-border-low/60 hover:border-sunset-glow/60 hover:bg-[#1a1614] p-3 rounded-sm transition-all duration-150 min-h-[60px] flex flex-wrap gap-1 items-start content-start floor-cell-btn"
                                 :class="getCellClass(rowIdx, colIdx)">
                                 <template v-if="floor.risers?.[colIdx] && floor.risers[colIdx].trim() !== ''">
-                                    <span v-for="tag in getTagList(floor.risers[colIdx])" :key="tag" class="border px-1.5 py-0.5 rounded-sm text-[10px]" :class="isUnitValid(tag) ? 'tag-valid' : 'tag-invalid'">
+                                    <span v-for="(tag, idx) in getTagList(floor.risers[colIdx])" :key="idx" class="border px-1.5 py-0.5 rounded-sm text-[10px]" :class="isUnitValid(tag) ? 'tag-valid' : 'tag-invalid'">
                                         {{ tag }}
                                     </span>
                                 </template>
